@@ -1,0 +1,28 @@
+{
+  "name": "finagent",
+  "version": "1.0.0",
+  "description": "FinAgent - 全球金融数据采集、分析与精准投资 Agent（双版本：简版/完整版），带权限隔离与应用开放 API，可发布于 GitHub",
+  "main": "server.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "collect:lite": "node scripts/collect-lite.js",
+    "collect:full": "node scripts/collect-full.js",
+    "backtest": "node scripts/backtest.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "finance",
+    "data-collection",
+    "analysis",
+    "prediction",
+    "backtest",
+    "agent",
+    "rbac",
+    "open-api"
+  ]
+}

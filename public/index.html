@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>任务管理 - 项目 01</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>任务管理</h1>
+      <div class="topbar-actions">
+        <input id="searchInput" type="text" placeholder="搜索任务…" />
+        <select id="filterSelect">
+          <option value="">全部</option>
+          <option value="todo">待办</option>
+          <option value="doing">进行中</option>
+          <option value="done">已完成</option>
+        </select>
+        <button id="addBtn" class="btn btn-primary">+ 新建任务</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Summary cards -->
+    <section class="summary" id="summary">
+      <div class="summary-card">
+        <span class="summary-num" id="sumAll">0</span>
+        <span class="summary-label">全部</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num" id="sumTodo">0</span>
+        <span class="summary-label">待办</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num" id="sumDoing">0</span>
+        <span class="summary-label">进行中</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-num" id="sumDone">0</span>
+        <span class="summary-label">已完成</span>
+      </div>
+    </section>
+
+    <!-- Records list -->
+    <section class="record-list" id="recordList">
+      <div class="empty-state">暂无任务，点击"新建任务"开始。</div>
+    </section>
+  </main>
+
+  <!-- Modal for create / edit -->
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal">
+      <h2 id="modalTitle">新建任务</h2>
+      <form id="recordForm">
+        <input type="hidden" id="fId" />
+        <label>
+          标题 <input type="text" id="fTitle" required placeholder="任务标题" />
+        </label>
+        <label>
+          内容
+          <textarea id="fContent" rows="3" placeholder="详细描述（可选）"></textarea>
+        </label>
+        <div class="form-row">
+          <label>
+            状态
+            <select id="fStatus">
+              <option value="todo">待办</option>
+              <option value="doing">进行中</option>
+              <option value="done">已完成</option>
+            </select>
+          </label>
+          <label>
+            优先级
+            <select id="fPriority">
+              <option value="low">低</option>
+              <option value="medium">中</option>
+              <option value="high">高</option>
+            </select>
+          </label>
+          <label>
+            截止日期
+            <input type="date" id="fDueDate" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="cancelBtn">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

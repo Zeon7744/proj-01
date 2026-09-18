@@ -1,0 +1,13 @@
+{
+  "name": "proj-01",
+  "version": "1.0.0",
+  "description": "Generic full-stack starter: Express + JSON file storage, single-page HTML/CSS/JS frontend.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
