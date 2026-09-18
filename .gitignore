@@ -1,10 +1,7 @@
 node_modules/
-.git
+.git/
 .DS_Store
-*.log
+Thumbs.db
 .env
 .env.local
-data/raw/
-data/processed/
-data/predictions/
-data/backtest/
+*.log
