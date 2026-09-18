@@ -13,7 +13,7 @@
     "test": "node --test test/"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.22.3"
   },
   "keywords": [
     "finance",
@@ -24,5 +24,10 @@
     "agent",
     "rbac",
     "open-api"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zeon7744/proj-01"
+  },
+  "homepage": "https://github.com/Zeon7744/proj-01"
 }

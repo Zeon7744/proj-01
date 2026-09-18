@@ -9,5 +9,11 @@
   },
   "dependencies": {
     "express": "^4.19.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zeon7744/proj-01"
+  },
+  "homepage": "https://github.com/Zeon7744/proj-01",
+  "license": "MIT"
 }

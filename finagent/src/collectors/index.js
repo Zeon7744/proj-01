@@ -1,12 +1,13 @@
 'use strict';
 
-// 数据采集源抽象层。
-// 优先尝试真实数据源（yfinance / alpha_vantage），不可用时回退到确定性模拟数据，
-// 保证仓库在无网络 / 无 API Key 的环境也能完整运行与演示（GitHub 友好）。
+// 数据采集源抽象层：多源聚合。
+// 按 cfg.sources 顺序尝试每个真实源（yfinance / alpha_vantage），
+// 取“bar 数最多”的源作为主源；全部失败则回退到确定性模拟数据，
+// 保证仓库在无网络 / 无 API Key 的环境也能完整运行（GitHub 友好）。
 
 const base = require('./base');
+const path = require('path');
 
-// 确定性伪随机（按 ticker + 日期 种子），保证可复现
 function seededRandom(seedStr) {
   let h = 2166136261;
   for (let i = 0; i < seedStr.length; i++) {
@@ -21,13 +22,13 @@ function seededRandom(seedStr) {
   };
 }
 
-// 模拟一个资产 10 年级别的日线行情（几何随机游走 + 趋势 + 波动）
+// 几何随机游走 + 趋势 + 波动 的确定性模拟日线
 function simulateSeries(ticker, opts) {
-  const { lookbackDays = 365, fields = ['close'] } = opts;
+  const { lookbackDays = 365 } = opts;
   const rand = seededRandom(ticker + ':seed');
   const bars = [];
   const startPrice = 20 + Math.floor(rand() * 480);
-  const drift = (rand() - 0.45) * 0.001; // 每日漂移
+  const drift = (rand() - 0.45) * 0.001;
   const vola = 0.01 + rand() * 0.02;
   let price = startPrice;
   const today = new Date();
@@ -35,7 +36,7 @@ function simulateSeries(ticker, opts) {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    if (d.getDay() === 0 || d.getDay() === 6) continue; // 跳过周末
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
     const shock = (rand() - 0.5) * vola * price;
     const ret = drift + shock / price;
     const open = price;
@@ -44,7 +45,7 @@ function simulateSeries(ticker, opts) {
     const high = Math.max(open, close) * (1 + rand() * 0.008);
     const low = Math.min(open, close) * (1 - rand() * 0.008);
     const volume = Math.round((1e6 + rand() * 9e6) * (1 + ret * 20));
-    const rec = {
+    bars.push({
       ticker,
       date: d.toISOString().slice(0, 10),
       open: round2(open),
@@ -54,8 +55,7 @@ function simulateSeries(ticker, opts) {
       volume,
       adjclose: round2(close),
       source: 'simulated',
-    };
-    bars.push(rec);
+    });
   }
   return bars;
 }
@@ -64,31 +64,54 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-async function collectPriceData(ticker, cfg, log) {
-  const out = { ticker, source: 'simulated', bars: [] };
-  try {
-    // 若安装了真实数据源则优先使用
-    const dyn = await tryLoad('yfinance');
-    if (dyn) {
-      out.source = 'yfinance';
-      out.bars = await dyn(ticker, cfg);
-    } else {
-      out.bars = simulateSeries(ticker, cfg);
-    }
-  } catch (e) {
-    if (log) log(`[${ticker}] real source failed, fallback to simulated: ${e.message}`);
-    out.bars = simulateSeries(ticker, cfg);
-  }
-  return out;
+function normalize(t) {
+  const s = String(t || '').toLowerCase();
+  if (s === 'yc') return 'yfinance';
+  if (s === 'av') return 'alpha_vantage';
+  return s;
 }
 
-async function tryLoad(name) {
+async function loadSource(name) {
   try {
-    const mod = require('./' + name);
+    const mod = require(path.join(__dirname, normalize(name) + '.js'));
     return mod;
   } catch (e) {
     return null;
   }
 }
 
-module.exports = { collectPriceData, simulateSeries, base, round2 };
+// 多源聚合：逐个尝试 cfg.sources，取 bar 数最多的；全失败则模拟
+async function collectPriceData(ticker, cfg, log) {
+  const out = { ticker, source: 'simulated', bars: [], multi: [] };
+  const sources = Array.isArray(cfg.sources) && cfg.sources.length ? cfg.sources : ['simulated'];
+
+  for (const s of sources) {
+    const key = normalize(s);
+    if (key === 'simulated') continue;
+    const mod = await loadSource(key);
+    if (!mod || typeof mod.collect !== 'function') continue;
+    try {
+      const bars = await mod.collect(ticker, cfg);
+      if (Array.isArray(bars) && bars.length) {
+        out.multi.push({ source: key, bars: bars.length });
+        if (bars.length > out.bars.length) {
+          out.bars = bars;
+          out.source = key;
+        }
+      }
+    } catch (e) {
+      if (log) log(`[${ticker}] ${key} failed: ${e.message}`);
+    }
+  }
+
+  if (!out.bars.length) {
+    out.bars = simulateSeries(ticker, cfg);
+    out.source = 'simulated';
+    if (log && sources.some((s) => s !== 'simulated')) {
+      log(`[${ticker}] no real source available, fallback to simulated`);
+    }
+  }
+  return out;
+}
+
+module.exports = { collectPriceData, simulateSeries, base, round2, normalize };

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm install
+
+      - name: Syntax check
+        run: |
+          node --check server.js
+          node --check src/agent.js
+
+      - name: Unit tests
+        run: node --test test/engines.test.js
+
+      - name: Lite collect smoke
+        run: node scripts/collect-lite.js
+
+      - name: Full collect + backtest smoke
+        run: |
+          node scripts/collect-full.js
+          node scripts/backtest.js

@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# data (generated at runtime)
+data/raw/
+data/processed/
+data/predictions/
+data/backtest/
+
+# env / secrets
+.env
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
