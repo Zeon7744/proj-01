@@ -6,10 +6,15 @@ data/raw/
 data/processed/
 data/predictions/
 data/backtest/
+data/backups/
+
+# logs / runtime
+logs/
+*.log
+.finagent.pid
 
 # env / secrets
 .env
-*.log
 
 # OS / editor
 .DS_Store

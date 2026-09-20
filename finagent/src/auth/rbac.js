@@ -1,26 +1,23 @@
 'use strict';
 
 // 权限隔离 + 应用开放 API。
-// 三种角色：
-//   viewer  : 只能读（行情、分析、预测）
-//   analyst : 可读 + 触发采集 / 分析
-//   admin   : 全部 + 管理密钥
-// 每个“应用”持有一个 API Key（前缀 fa_），带作用域 scope 列表。
-// 默认内置 admin 密钥 fa_admin（生产环境请改为随机并走环境变量）。
+// 角色：viewer / analyst / admin，每个“应用”持有一个 API Key（前缀 fa_）+ 作用域 scope 列表。
+// 默认内置密钥便于本地开箱即用；生产请用 FINAGENT_ADMIN_KEY 等环境变量覆盖，
+// 并设 FINAGENT_STRICT_KEYS=1 关闭“无 key 降级 admin”。
 
 const crypto = require('crypto');
 
 const ROLE_SCOPE = {
   viewer: ['read:data', 'read:analysis', 'read:predictions'],
   analyst: ['read:data', 'read:analysis', 'read:predictions', 'write:collect', 'write:analyze'],
-  admin: ['*', 'manage:keys'],
+  admin: ['*', 'manage:keys', 'manage:ops'],
 };
 
 // 内置账户（示例用；生产建议放 DB + 密码哈希）
 const ACCOUNTS = [
   { user: 'admin', role: 'admin', apiKey: process.env.FINAGENT_ADMIN_KEY || 'fa_admin', scopes: ROLE_SCOPE.admin },
-  { user: 'analyst', role: 'analyst', apiKey: 'fa_analyst_7f3a', scopes: ROLE_SCOPE.analyst },
-  { user: 'viewer', role: 'viewer', apiKey: 'fa_viewer_1c9d', scopes: ROLE_SCOPE.viewer },
+  { user: 'analyst', role: 'analyst', apiKey: process.env.FINAGENT_ANALYST_KEY || 'fa_analyst_7f3a', scopes: ROLE_SCOPE.analyst },
+  { user: 'viewer', role: 'viewer', apiKey: process.env.FINAGENT_VIEWER_KEY || 'fa_viewer_1c9d', scopes: ROLE_SCOPE.viewer },
 ];
 
 function grantKey(role) {
@@ -35,7 +32,11 @@ function auth(req, res, next) {
   const h = req.headers.authorization || '';
   let key = h.startsWith('Bearer ') ? h.slice(7) : req.headers['x-api-key'];
   if (!key) {
-    // 本地控制台无 key 时降级为 admin，方便开发（生产关闭）
+    // 严格模式：必须提供 key（生产推荐）
+    if (process.env.FINAGENT_STRICT_KEYS === '1') {
+      return res.status(401).json({ error: 'API key required (strict mode)' });
+    }
+    // 本地控制台无 key 时降级为 admin，方便开发（生产设 FINAGENT_LOCAL_OPEN=0 关闭）
     if (process.env.FINAGENT_LOCAL_OPEN !== '0') {
       req.ctx = { user: 'local', role: 'admin', scopes: ROLE_SCOPE.admin };
       return next();

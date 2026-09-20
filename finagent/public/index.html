@@ -3,25 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FinAgent · 全球金融数据智能分析 Agent</title>
+  <title>FinAgent · 全球金融数据智能分析 Agent 控制台</title>
   <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body>
   <aside class="sidenav">
     <div class="brand">Fin<span>Agent</span></div>
+    <div class="tagline">全球金融 · 自研算法 · 三端共享</div>
     <nav>
       <button class="nav-item active" data-page="dashboard">概览</button>
       <button class="nav-item" data-page="data">行情数据</button>
       <button class="nav-item" data-page="analysis">分析</button>
       <button class="nav-item" data-page="prediction">预测 & 命中</button>
+      <button class="nav-item" data-page="model">模型竞技场</button>
+      <button class="nav-item" data-page="ops">运维</button>
       <button class="nav-item" data-page="openapi">开放 API</button>
     </nav>
     <div class="sidenav-foot">
       <label class="muted">角色（权限隔离）</label>
       <select id="roleSelect">
-        <option value="admin">admin (fa_admin)</option>
-        <option value="analyst">analyst (fa_analyst_7f3a)</option>
-        <option value="viewer">viewer (fa_viewer_1c9d)</option>
+        <option value="admin">admin</option>
+        <option value="analyst">analyst</option>
+        <option value="viewer">viewer</option>
       </select>
       <div class="version-toggle" id="versionToggle">
         <button class="vbtn active" data-v="full">完整版</button>
@@ -35,6 +38,7 @@
       <h1 id="pageTitle">概览</h1>
       <div class="topbar-actions">
         <button id="collectBtn" class="btn btn-primary">运行采集</button>
+        <button id="backupBtn" class="btn">备份</button>
         <button id="refreshBtn" class="btn">刷新</button>
         <span class="pill" id="lastRun">尚未运行</span>
       </div>
@@ -50,15 +54,19 @@
 
     <section id="page-data" class="page">
       <div class="panel">
-        <h2>行情数据</h2>
+        <h2>行情数据（多源聚合）</h2>
         <div id="dataList"></div>
       </div>
     </section>
 
     <section id="page-analysis" class="page">
       <div class="panel">
-        <h2>技术指标分析</h2>
+        <h2>技术指标 + 自研模型推理</h2>
         <div id="analysisList"></div>
+      </div>
+      <div class="panel" id="detailPanel" hidden>
+        <h2 id="detailTitle">标的详情</h2>
+        <div id="detailBody"></div>
       </div>
     </section>
 
@@ -66,6 +74,20 @@
       <div class="panel">
         <h2>预测 & 命中检测（完整版）</h2>
         <div id="predList"></div>
+      </div>
+    </section>
+
+    <section id="page-model" class="page">
+      <div class="panel">
+        <h2>模型竞技场（T1..T4 + Baseline）</h2>
+        <div id="modelList"></div>
+      </div>
+    </section>
+
+    <section id="page-ops" class="page">
+      <div class="panel">
+        <h2>运维状态</h2>
+        <div id="opsBody"></div>
       </div>
     </section>
 

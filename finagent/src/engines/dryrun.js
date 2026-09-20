@@ -2,12 +2,13 @@
 
 // 历史 dry-run 回测：在“已有历史数据”中模拟预测并校验命中，
 // 用于首次部署时即可展示命中率、算法晋级、自适应反馈。
+// v2: 命中阈值收紧到 1.5%。
 const inhouse = require('./inhouse');
 const arena = require('./arena');
 
 function historicalDryRun(bars, cfg = {}) {
   const h = (cfg.horizon && Number(cfg.horizon)) || 5;
-  const threshold = (cfg.threshold && Number(cfg.threshold)) || 0.02;
+  const threshold = (cfg.threshold && Number(cfg.threshold)) || 0.015;
   const start = Math.max(300, Math.floor(bars.length * 0.55));
   const preds = [];
   let hits = 0;
@@ -42,7 +43,6 @@ function historicalDryRun(bars, cfg = {}) {
     });
   }
 
-  // 汇总 adaptive feedback，供下一次真实预测自我校准
   const adaptiveFeedback = preds.map((p) => ({
     days: p.days,
     predErr: p.actualRet - p.predRet,
@@ -52,8 +52,7 @@ function historicalDryRun(bars, cfg = {}) {
     factorsAt: p.factorsAt,
   }));
 
-  // 模型竞技场历史 dry-run（用同样规则评估 T1..T4 的 winRate）
-  const modelArena = arena.arena(bars, adaptiveFeedback);
+  const modelArena = arena.arena(bars, adaptiveFeedback, { threshold });
 
   return {
     ticker: bars[bars.length - 1].ticker,

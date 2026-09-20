@@ -1,10 +1,8 @@
 'use strict';
 
-// 命中检测 / 回测引擎：检测“预测”是否命中实际价格走势，输出命中率。
-// 命中误差 <= threshold（默认 2%）计为命中；并生成 adaptive 反馈项，
-// 供 T3/T4 自研模型在下一次推理时自我校准权重。
-
-function resolvePrediction(pred, actualPrices, threshold = 0.02) {
+// 命中检�?/ 回测引擎：检测“预测”是否命中实际价格走势，输出命中率�?// 命中误差 <= threshold（默�?2%）计为命中；并生�?adaptive 反馈项，
+// �?T3/T4 自研模型在下一次推理时自我校准权重�?
+function resolvePrediction(pred, actualPrices, threshold = 0.015) {
   const base = pred.base;
   const resolved = pred.predictions.map((p) => {
     const targetDate = addDays(pred.asOf, p.days);
@@ -34,7 +32,7 @@ function resolvePrediction(pred, actualPrices, threshold = 0.02) {
   };
 }
 
-// 为 T3/T4 提供在线校准信号：predErr = actualReturn - predReturn
+// �?T3/T4 提供在线校准信号：predErr = actualReturn - predReturn
 function adaptiveFeedback(pred, resolved, threshold) {
   return resolved
     .filter((r) => r.hit !== null)
@@ -73,7 +71,7 @@ function findCloseOnOrAfter(prices, date) {
 // 对某 ticker 的历史预测做批量回测（含命中 + adaptive 反馈汇总）
 function backtest(ticker, bars, predictions, cfg) {
   const prices = bars.map((b) => ({ date: b.date, close: b.close }));
-  const threshold = (cfg && cfg.threshold) || 0.02;
+  const threshold = (cfg && cfg.threshold) || 0.015;
   const reports = predictions
     .filter((p) => p.ticker === ticker)
     .map((p) => resolvePrediction(p, prices, threshold));
@@ -113,3 +111,5 @@ function backtest(ticker, bars, predictions, cfg) {
 }
 
 module.exports = { resolvePrediction, backtest, addDays, findCloseOnOrAfter, adaptiveFeedback };
+
+

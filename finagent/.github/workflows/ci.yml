@@ -25,9 +25,12 @@ jobs:
         run: |
           node --check server.js
           node --check src/agent.js
+          node --check src/ops/scheduler.js
+          node --check src/ops/middleware.js
+          node --check src/shared/contract.js
 
       - name: Unit tests
-        run: node --test test/engines.test.js
+        run: npm test
 
       - name: Lite collect smoke
         run: node scripts/collect-lite.js
@@ -36,3 +39,7 @@ jobs:
         run: |
           node scripts/collect-full.js
           node scripts/backtest.js
+          node scripts/ops.js audit
+
+
+

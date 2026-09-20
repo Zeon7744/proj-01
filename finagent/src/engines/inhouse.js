@@ -3,7 +3,7 @@
 // 自研分析算法（in-house），分四个阶段，随“分析数据量”自动晋级：
 //   T1 lite   : 规则 + 简单指标（数据少 -> 简单）
 //   T2 robust  : 多因子加权（数据中等）
-//   T3 adaptive: 自适应权重（滚动误差反馈，权重随命中/偏差自动调）
+//   T3 adaptive: 自适应权重（滚动误差反馈，按命中率自适应学习率）
 //   T4 advanced: 自适应 + 动量分解 + 波动率状态（数据量大 -> 精准）
 // 模型“晋级”不是看绝对精度，而是看 walk-forward 回测中相对基线的提升（避免过拟合）。
 // 本模块同时输出“思维”（reasoning / hypothesis / 不确定度），体现 agent 的自我思考能力。
@@ -58,13 +58,12 @@ function t2Factors(bars) {
   };
 }
 
-// T3 自适应：在 T2 基础上，用滚动误差反馈在线调整权重（自我校准）
+// T3 自适应（v2）：按命中率的自适应学习率
 function t3Adaptive(bars, feedback) {
   const f = t2Factors(bars);
   const w = { trend: f.factors.trend, mom: f.factors.mom, mr: f.factors.mr };
   const fb = Array.isArray(feedback) && feedback.length ? feedback : null;
   if (fb) {
-    // feedback: [{predErr, factorsAt}]  让权重向“减小误差”的方向微调
     const n = Math.min(24, fb.length);
     for (const k of ['trend', 'mom', 'mr']) {
       let corr = 0;
@@ -73,7 +72,9 @@ function t3Adaptive(bars, feedback) {
         const fv = (fb[i].factorsAt && fb[i].factorsAt[k]) || 0;
         corr += -e * fv;
       }
-      const adj = (corr / n) * 0.3;
+      const hitRate = fb.filter((x) => x.hit).length / fb.length;
+      const lr = 0.2 + hitRate * 0.4; // 命中越多学习越稳
+      const adj = (corr / n) * lr;
       w[k] = clamp(w[k] + adj, 0.05, 0.8);
     }
     const sum = w.trend + w.mom + w.mr || 1;
@@ -122,13 +123,12 @@ function t4Advanced(bars, feedback) {
 }
 
 // ---------------- 模型选择 + 自我升级 ----------------
-// 依据“分析数据量”选最低满足门槛的阶段；并跑 walk-forward 验证是否可晋级
 function pickModel(bars, feedback) {
   const n = bars.length;
   let tier;
-  if (n < 250) tier = 'T1';
-  else if (n < 600) tier = 'T2';
-  else if (n < 1400) tier = 'T3';
+  if (n < 300) tier = 'T1';
+  else if (n < 800) tier = 'T2';
+  else if (n < 1600) tier = 'T3';
   else tier = 'T4';
 
   const run = {
@@ -139,8 +139,7 @@ function pickModel(bars, feedback) {
   }[tier];
 
   const sig = run();
-  // 自我升级：若当前数据量已达更高门槛，则 walk-forward 验证更高模型是否更好
-  const candidateTier = n >= 1400 ? 'T4' : n >= 600 ? 'T3' : n >= 250 ? 'T2' : 'T1';
+  const candidateTier = n >= 1600 ? 'T4' : n >= 800 ? 'T3' : n >= 300 ? 'T2' : 'T1';
   let upgraded = false;
   let best = sig;
   if (candidateTier === 'T4' && tier !== 'T4') {
@@ -159,10 +158,10 @@ function pickModel(bars, feedback) {
   };
 }
 
-// walk-forward：在“过去 1 年窗口”内比较 cand 与基线是否更准；不改进则不晋级（防过拟合）
+// walk-forward：更严格样本量（start=300, 0.55 比例）防过拟合
 function walkForwardWins(bars, cand, base) {
   const closes = bars.map((b) => b.close);
-  const start = Math.max(252, Math.floor(closes.length * 0.5));
+  const start = Math.max(300, Math.floor(closes.length * 0.55));
   let candErr = 0,
     baseErr = 0,
     cnt = 0;
@@ -220,7 +219,6 @@ function reason(sig, bars, metrics) {
   if (!hypotheses.length) {
     hypotheses.push('No dominant edge detected; maintain current stance and watch for regime change.');
   }
-  // 自我不确定性估计（基于置信度）
   thesis.uncertainty = Math.round((1 - conf) * 10000) / 100;
   thesis.hypotheses = hypotheses;
   thesis.thought =

@@ -49,7 +49,7 @@ module.exports = {
       backtest: {
         enabled: true,
         windowDays: 252,
-        threshold: 0.02,
+        threshold: 0.015,
         historicalDryRun: true,
       },
       accuracyReport: {
@@ -58,3 +58,4 @@ module.exports = {
     },
   },
 };
+

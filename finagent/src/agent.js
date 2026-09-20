@@ -1,8 +1,8 @@
 'use strict';
 
-// Agent 编排器：采集 -> 分析 -> (完整版) 预测 -> 命中回测 -> 自我校准。
+// Agent 编排器：采集 -> 分析 -> (完整版) 预测 -> 命中回测 -> 自我校准 -> 进化日志。
 // 版本：lite / full，由 config/versions.js 驱动。
-// 高级版额外运行：in-house 模型 + arena + walk-forward + 自我校准。
+// 高级版额外运行：in-house 模型 + arena + walk-forward + 自我校准 + 自我升级日志。
 const versions = require('../config/versions');
 const collector = require('./collectors');
 const analyze = require('./engines/analyze');
@@ -10,6 +10,7 @@ const inhouse = require('./engines/inhouse');
 const arena = require('./engines/arena');
 const backtestEngine = require('./engines/backtest');
 const dryrun = require('./engines/dryrun');
+const evolution = require('./engines/evolution');
 const db = require('./store/db');
 
 async function runAgent(versionKey, opts = {}, log = () => {}) {
@@ -43,7 +44,7 @@ async function runAgent(versionKey, opts = {}, log = () => {}) {
       const thesis = inhouse.reason(inHouse, bars, metrics);
 
       // 3) 模型竞技场（T1..T4 + baseline 的 walk-forward 命中评估）
-      modelArena = arena.arena(bars, feedback);
+      modelArena = arena.arena(bars, feedback, { threshold: (cfg.predict.backtest && cfg.predict.backtest.threshold) || 0.015 });
 
       // 4) 生成多周期预测（以自研 T 系列模型为准）
       prediction = buildPrediction(ticker, bars, inHouse, thesis, modelArena, cfg.predict);
@@ -58,7 +59,7 @@ async function runAgent(versionKey, opts = {}, log = () => {}) {
       if (cfg.predict.backtest && cfg.predict.backtest.historicalDryRun) {
         backtest = dryrun.historicalDryRun(bars, {
           horizon: 5,
-          threshold: (cfg.predict.backtest.threshold) || 0.02,
+          threshold: (cfg.predict.backtest.threshold) || 0.015,
         });
       }
       const preds = db.listPredictions().filter((p) => p.ticker === ticker);
@@ -101,6 +102,13 @@ async function runAgent(versionKey, opts = {}, log = () => {}) {
       prediction,
       backtest,
     });
+
+    // 8) 记录自我升级 / 竞技场胜出 / 权重校准事件（进化日志）
+    if (cfg.predict.enabled) {
+      evolution.fromRun(out.tickers[out.tickers.length - 1]).forEach((ev) => {
+        evolution.record(ev);
+      });
+    }
   }
 
   out.finishedAt = new Date().toISOString();

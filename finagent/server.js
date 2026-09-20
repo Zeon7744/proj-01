@@ -1,21 +1,28 @@
 'use strict';
 
-// FinAgent REST API 服务层：挂载 RBAC 鉴权，暴露行情 / 分析 / 预测 / 命中 /
-// 模型竞技场 / Agent 编排 / 密钥管理等端点。
-const path = require('path');
+// FinAgent REST API 服务层：挂载 RBAC 鉴权，暴露行�?/ 分析 / 预测 / 命中 /
+// 模型竞技�?/ Agent 编排 / 密钥管理 / 运维（健康、审计、备份、定时任务）等端点�?const path = require('path');
 const express = require('express');
 
 const { auth, requireScope, grantKey, currentIdentity, ACCOUNTS } = require('./src/auth/rbac');
 const { runAgent, getSnapshot, listAll } = require('./src/agent');
 const db = require('./src/store/db');
 const versions = require('./config/versions');
+const health = require('./src/ops/health');
+const backup = require('./src/ops/backup');
+const scheduler = require('./src/ops/scheduler');
+const evolution = require('./src/engines/evolution');
+const logger = require('./src/ops/logger');
+const { rateLimit, auditLog } = require('./src/ops/middleware');
 
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '2mb' }));
 
-// 全局鉴权：无 key 时本地开发自动降级为 admin（生产设 FINAGENT_LOCAL_OPEN=0）
+// 全局鉴权：无 key 时本地开发自动降级为 admin（生产设 FINAGENT_LOCAL_OPEN=0�?app.use(auditLog());
+app.use('/api', rateLimit({ windowMs: 60 * 1000, max: parseInt(process.env.FINAGENT_RATE_MAX || '120', 10) }));
 app.use(auth);
+// �� /api ��̬��Դ��������
 
 // ---------------------------------------------------------------------------
 // 基础端点
@@ -44,8 +51,7 @@ app.get('/api/versions', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 行情 / 分析 / 预测（读）
-// ---------------------------------------------------------------------------
+// 行情 / 分析 / 预测（读�?// ---------------------------------------------------------------------------
 app.get('/api/tickers', requireScope('read:data'), (req, res) => {
   res.json({ tickers: db.listTickers() });
 });
@@ -91,22 +97,51 @@ app.get('/api/backtest/:ticker', requireScope('read:predictions'), (req, res) =>
 });
 
 // ---------------------------------------------------------------------------
-// Agent 编排（写：触发 采集 + 分析 + 预测 + 命中 + 自我校准）
-// ---------------------------------------------------------------------------
+// Agent 编排（写：触�?采集 + 分析 + 预测 + 命中 + 自我校准�?// ---------------------------------------------------------------------------
 app.post('/api/agent/run', requireScope('write:collect'), async (req, res) => {
   const { version, tickers } = req.body || {};
   const versionKey = version === 'full' ? 'full' : 'lite';
   try {
-    const result = await runAgent(versionKey, { tickers }, (msg) => console.log(`[agent] ${msg}`));
+    const result = await runAgent(versionKey, { tickers }, (msg) => logger.info(`[agent] ${msg}`));
     res.json({ result });
   } catch (e) {
+    logger.error(`agent/run failed: ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// 密钥管理（仅 admin）
+// 运维：健�?/ 审计 / 备份 / 清理 / 定时任务（admin�?// ---------------------------------------------------------------------------
+app.get('/api/ops/health', requireScope('manage:ops'), (req, res) => {
+  res.json(health.dataHealth());
+});
+
+app.get('/api/ops/audit', requireScope('manage:ops'), (req, res) => {
+  res.json(health.audit({ log: false }));
+});
+
+app.post('/api/ops/backup', requireScope('manage:ops'), (req, res) => {
+  res.json(backup.backup());
+});
+
+app.post('/api/ops/prune', requireScope('manage:ops'), (req, res) => {
+  const keep = parseInt(req.body && req.body.keepDays || '30', 10);
+  const removed = backup.pruneOld(keep);
+  const trimmed = backup.trimRaw(2500);
+  res.json({ removed: removed.length, trimmed, keepDays: keep });
+});
+
+app.get('/api/ops/jobs', requireScope('manage:ops'), (req, res) => {
+  res.json({ jobs: scheduler.jobStatus(), started: scheduler.jobsStarted() });
+});
+
 // ---------------------------------------------------------------------------
+// 密钥管理（仅 admin�?// ---------------------------------------------------------------------------
+app.get('/api/evolution', requireScope('read:analysis'), (req, res) => {
+  const n = Math.min(parseInt(req.query.limit || '50', 10), 200);
+  res.json({ events: evolution.latest(n) });
+});
+
 app.get('/api/keys', requireScope('manage:keys'), (req, res) => {
   res.json({
     accounts: ACCOUNTS.map((a) => ({ user: a.user, role: a.role, apiKey: a.apiKey, scopes: a.scopes })),
@@ -122,16 +157,32 @@ app.post('/api/keys/:role', requireScope('manage:keys'), (req, res) => {
 // 错误处理
 // ---------------------------------------------------------------------------
 app.use((err, req, res, next) => {
-  console.error(err);
+  logger.error(`unhandled: ${err.stack || err.message}`);
   res.status(500).json({ error: err.message });
 });
 
+// ---------------------------------------------------------------------------
+// 启动：可选开启后台定时任务（FINAGENT_AUTOSTART_JOBS=1�?// ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 3001;
 if (require.main === module) {
+  if (process.env.FINAGENT_AUTOSTART_JOBS === '1') {
+    const v = process.env.FINAGENT_JOB_VERSION === 'lite' ? 'lite' : 'full';
+    scheduler.dataRefreshJob(v);
+    scheduler.logPruneJob();
+    scheduler.hitRateAuditJob();
+    scheduler.markStarted();
+    logger.info('autostart jobs enabled');
+  }
   app.listen(PORT, () => {
-    console.log(`FinAgent API running at http://localhost:${PORT}`);
-    console.log('Console: http://localhost:' + PORT + '/');
+    logger.info(`FinAgent API running at http://localhost:${PORT}`);
+    console.log(`FinAgent console: http://localhost:${PORT}/`);
   });
 }
 
 module.exports = app;
+
+
+
+
+
+
