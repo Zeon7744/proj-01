@@ -16,6 +16,7 @@
       <button class="nav-item" data-page="analysis">分析</button>
       <button class="nav-item" data-page="prediction">预测 & 命中</button>
       <button class="nav-item" data-page="model">模型竞技场</button>
+      <button class="nav-item" data-page="evolution">自我升级日志</button>
       <button class="nav-item" data-page="ops">运维</button>
       <button class="nav-item" data-page="openapi">开放 API</button>
     </nav>
@@ -61,7 +62,7 @@
 
     <section id="page-analysis" class="page">
       <div class="panel">
-        <h2>技术指标 + 自研模型推理</h2>
+        <h2>技术指标 + 自研模型推理 + Regime</h2>
         <div id="analysisList"></div>
       </div>
       <div class="panel" id="detailPanel" hidden>
@@ -81,6 +82,13 @@
       <div class="panel">
         <h2>模型竞技场（T1..T4 + Baseline）</h2>
         <div id="modelList"></div>
+      </div>
+    </section>
+
+    <section id="page-evolution" class="page">
+      <div class="panel">
+        <h2>自我升级 / 权重校准 / 竞技场胜出</h2>
+        <div id="evolutionBody" style="display:flex;flex-direction:column;gap:8px;max-height:600px;overflow:auto"></div>
       </div>
     </section>
 

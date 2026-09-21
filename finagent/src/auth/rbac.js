@@ -1,11 +1,13 @@
 'use strict';
 
-// 权限隔离 + 应用开放 API。
-// 角色：viewer / analyst / admin，每个“应用”持有一个 API Key（前缀 fa_）+ 作用域 scope 列表。
-// 默认内置密钥便于本地开箱即用；生产请用 FINAGENT_ADMIN_KEY 等环境变量覆盖，
+// 权限隔离 + 应用开放 API + 会员等级。
+// 角色：viewer / analyst / admin（操作权限），会员等级 free / pro / enterprise（功能开放 + 配额）。
+// 每个“应用”持有一个 API Key（前缀 fa_）+ 作用域 scope 列表。
+// 默认内置密钥便于本地开箱即用；生产请用 FINAGENT_*_KEY 环境变量覆盖，
 // 并设 FINAGENT_STRICT_KEYS=1 关闭“无 key 降级 admin”。
 
 const crypto = require('crypto');
+const { tierOf, TIER, ACCOUNT_TIER } = require('../entitlements/tiers');
 
 const ROLE_SCOPE = {
   viewer: ['read:data', 'read:analysis', 'read:predictions'],
@@ -27,25 +29,29 @@ function grantKey(role) {
   return { user: role, role, apiKey: 'fa_' + raw, scopes: ROLE_SCOPE[role] || ROLE_SCOPE.viewer };
 }
 
-// 鉴权中间件：从 Authorization: Bearer <key> 或 X-API-Key 解析
+// 鉴权中间件：从 Authorization: Bearer <key> 或 X-API-Key 解析，
+// 并计算会员等级（tier）挂载到 req.ctx，供功能开放 / 配额使用。
 function auth(req, res, next) {
   const h = req.headers.authorization || '';
   let key = h.startsWith('Bearer ') ? h.slice(7) : req.headers['x-api-key'];
   if (!key) {
-    // 严格模式：必须提供 key（生产推荐）
     if (process.env.FINAGENT_STRICT_KEYS === '1') {
       return res.status(401).json({ error: 'API key required (strict mode)' });
     }
-    // 本地控制台无 key 时降级为 admin，方便开发（生产设 FINAGENT_LOCAL_OPEN=0 关闭）
     if (process.env.FINAGENT_LOCAL_OPEN !== '0') {
-      req.ctx = { user: 'local', role: 'admin', scopes: ROLE_SCOPE.admin };
+      req.ctx = { user: 'local', role: 'admin', tier: tierOf('admin'), scopes: ROLE_SCOPE.admin };
       return next();
     }
     return res.status(401).json({ error: 'missing API key' });
   }
   const acct = ACCOUNTS.find((a) => a.apiKey === key);
   if (!acct) return res.status(403).json({ error: 'invalid API key' });
-  req.ctx = { user: acct.user, role: acct.role, scopes: acct.scopes };
+  req.ctx = {
+    user: acct.user,
+    role: acct.role,
+    tier: tierOf(acct.role),
+    scopes: acct.scopes,
+  };
   next();
 }
 
@@ -59,8 +65,22 @@ function requireScope(scope) {
   };
 }
 
-function currentIdentity(req) {
-  return req.ctx || { user: 'anon', role: 'viewer', scopes: ROLE_SCOPE.viewer };
+// 会员等级门控：要求该功能对当前 tier 开放，否则 402/403
+function requireFeature(feature) {
+  const { can } = require('../entitlements/tiers');
+  return (req, res, next) => {
+    const ctx = req.ctx || { role: 'viewer' };
+    if (can(feature, ctx.role)) return next();
+    return res.status(403).json({
+      error: `feature '${feature}' not available for tier '${ctx.tier || 'free'}'`,
+      upgradeTo: feature === 'regime' ? 'enterprise' : feature === 'modelArena' || feature === 'predict' ? 'pro' : null,
+    });
+  };
 }
 
-module.exports = { auth, requireScope, grantKey, currentIdentity, ROLE_SCOPE, ACCOUNTS };
+function currentIdentity(req) {
+  const base = req.ctx || { user: 'anon', role: 'viewer', scopes: ROLE_SCOPE.viewer };
+  return { ...base, tier: base.tier || tierOf(base.role) };
+}
+
+module.exports = { auth, requireScope, requireFeature, grantKey, currentIdentity, ROLE_SCOPE, ACCOUNTS, TIER, ACCOUNT_TIER, tierOf };

@@ -1,7 +1,7 @@
 {
   "name": "finagent",
-  "version": "1.1.0",
-  "description": "FinAgent - global financial data collection & high-precision in-house analysis agent (lite/full), multi-source collection + self-upgrade + hit-rate backtest + RBAC + open API + three-end sharing + ops",
+  "version": "1.2.0",
+  "description": "FinAgent - global financial data collection & high-precision in-house analysis agent (lite/full), multi-source collection + self-upgrade + regime-aware + hit-rate backtest + RBAC + open API + three-end sharing + ops",
   "main": "server.js",
   "license": "MIT",
   "scripts": {
@@ -13,12 +13,13 @@
     "collect:lite": "node scripts/collect-lite.js",
     "collect:full": "node scripts/collect-full.js",
     "backtest": "node scripts/backtest.js",
+    "evolve": "node scripts/evolve.js",
     "ops:audit": "node scripts/ops.js audit",
     "ops:backup": "node scripts/ops.js backup",
     "ops:prune": "node scripts/ops.js prune --keep-days 30",
     "ops:jobs": "node scripts/ops.js jobs --version full",
-    "test": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js",
-    "test:all": "node --test test/engines.test.js test/shared.test.js"
+    "test": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js",
+    "test:all": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js"
   },
   "dependencies": {
     "chokidar": "^4.0.0",
@@ -33,6 +34,7 @@
     "analysis",
     "prediction",
     "self-upgrading",
+    "regime",
     "backtest",
     "agent",
     "rbac",
@@ -41,4 +43,3 @@
     "shared-contract"
   ]
 }
-

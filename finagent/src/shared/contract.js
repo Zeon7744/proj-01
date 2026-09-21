@@ -26,7 +26,8 @@ const SNAPSHOT_SHAPE = {
     upgraded: 'boolean (walk-forward 验证后是否晋级)',
     target: 'number (5 天目标价)',
     confidence: 'number (0-1)',
-    factors: 'object (趋势/动量/均值回归/波动率/波动状态)',
+    factors: 'object (趋势/动量/均值回归/波动率/regime)',
+    regime: 'object|null {volRegime, volTrend, marketState, trendStreak, riskAdjust}',
   },
   reasoning: {
     direction: "'up'|'down'|'flat'",
@@ -35,9 +36,11 @@ const SNAPSHOT_SHAPE = {
     uncertainty: 'number (0-100)',
     hypotheses: 'array of string',
     thought: 'string (自然语言“思考”)',
+    regime: 'object|null (市场状态，供假设与展示)',
   },
   modelArena: {
     best: { key: 'string', label: 'string', winRate: 'number (%)', avgAbsErr: 'number' },
+    threshold: 'number (命中阈值，默认 0.015)',
     scored: 'array of {key,label,winRate,avgAbsErr,target,confidence}',
   },
   prediction: {
@@ -64,6 +67,13 @@ function validateSnapshot(snap) {
     if (!snap.inHouse || !snap.inHouse.model) errs.push('inHouse.model missing (full)');
     if (!snap.modelArena || !snap.modelArena.best) errs.push('modelArena.best missing (full)');
     if (!snap.reasoning || !Array.isArray(snap.reasoning.hypotheses)) errs.push('reasoning.hypotheses missing (full)');
+    // regime 为可选增强字段：存在时必须含 marketState
+    if (snap.inHouse && snap.inHouse.regime && !snap.inHouse.regime.marketState) {
+      errs.push('inHouse.regime.marketState missing');
+    }
+    if (snap.reasoning && snap.reasoning.regime && !snap.reasoning.regime.marketState) {
+      errs.push('reasoning.regime.marketState missing');
+    }
   }
   return errs;
 }

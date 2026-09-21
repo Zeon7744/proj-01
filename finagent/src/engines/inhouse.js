@@ -1,12 +1,14 @@
 'use strict';
 
+const regimeModule = require('./regime');
+
 // 自研分析算法（in-house），分四个阶段，随“分析数据量”自动晋级：
 //   T1 lite   : 规则 + 简单指标（数据少 -> 简单）
 //   T2 robust  : 多因子加权（数据中等）
-//   T3 adaptive: 自适应权重（滚动误差反馈，按命中率自适应学习率）
-//   T4 advanced: 自适应 + 动量分解 + 波动率状态（数据量大 -> 精准）
+//   T3 adaptive: 自适应权重（滚动误差反馈，按命中率自适应学习率 + regime 因子）
+//   T4 advanced: 自适应 + 动量分解 + regime 感知（波动率状态持续性 + 趋势持续天数 + 风险调整）
 // 模型“晋级”不是看绝对精度，而是看 walk-forward 回测中相对基线的提升（避免过拟合）。
-// 本模块同时输出“思维”（reasoning / hypothesis / 不确定度），体现 agent 的自我思考能力。
+// 本模块同时输出“思维”（reasoning / hypothesis / 不确定度 / regime），体现 agent 的自我思考能力。
 
 // 基线：朴素动量预测（“不动脑”的对照组）
 function baselineForecast(bars, h) {
@@ -58,7 +60,7 @@ function t2Factors(bars) {
   };
 }
 
-// T3 自适应（v2）：按命中率的自适应学习率
+// T3 自适应（v2）：按命中率的自适应学习率 + regime 因子
 function t3Adaptive(bars, feedback) {
   const f = t2Factors(bars);
   const w = { trend: f.factors.trend, mom: f.factors.mom, mr: f.factors.mr };
@@ -73,7 +75,7 @@ function t3Adaptive(bars, feedback) {
         corr += -e * fv;
       }
       const hitRate = fb.filter((x) => x.hit).length / fb.length;
-      const lr = 0.2 + hitRate * 0.4; // 命中越多学习越稳
+      const lr = 0.2 + hitRate * 0.4;
       const adj = (corr / n) * lr;
       w[k] = clamp(w[k] + adj, 0.05, 0.8);
     }
@@ -86,17 +88,19 @@ function t3Adaptive(bars, feedback) {
   const cLast = last[last.length - 1];
   const combined = w.trend * f.factors.trend + w.mom * f.factors.mom + w.mr * f.factors.mr;
   const ret5 = combined * f.factors.damp * 5;
+  const t3regime = regimeModule.regimeFeatures(bars);
   return {
     model: 'T3-adaptive',
     target: cLast * (1 + ret5),
     confidence: clamp(0.6 + Math.abs(combined) * 15, 0.45, 0.92),
     weights: { ...w },
-    factors: { ...f.factors, state: volState(f.factors.vol) },
+    factors: { ...f.factors, state: volState(f.factors.vol), regime: t3regime.available ? t3regime : null },
+    regime: t3regime.available ? t3regime : null,
     reason: `T3 adaptive weights ${JSON.stringify({ ...w })} (feedback n=${fb ? fb.length : 0})`,
   };
 }
 
-// T4 进阶：动量分解（短期/中期）+ 波动率状态 + 风险调整目标
+// T4 进阶 v3：动量分解 + regime 感知（波动率状态持续性 + 趋势持续天数 + 风险调整）
 function t4Advanced(bars, feedback) {
   const closes = bars.map((b) => b.close);
   const last = closes[closes.length - 1];
@@ -104,7 +108,8 @@ function t4Advanced(bars, feedback) {
   const momM = shortMom(closes, 30);
   const vol = annVol(closes, 20) / 100;
   const state = volState(vol);
-  const riskAdj = state === 'high' ? 0.6 : state === 'mid' ? 0.8 : 1.0;
+  const regime = regimeModule.regimeFeatures(bars);
+  const riskAdj = regime.available ? regime.riskAdjust : state === 'high' ? 0.6 : state === 'mid' ? 0.8 : 1.0;
   const a = t3Adaptive(bars, feedback);
   const combined = a.weights.trend * momM + a.weights.mom * momS * 0.5 + a.weights.mr * 0;
   const ret5 = combined * riskAdj * 5;
@@ -116,9 +121,10 @@ function t4Advanced(bars, feedback) {
     momShort: momS,
     momMedium: momM,
     riskAdjust: riskAdj,
+    regime: regime.available ? regime : null,
     weights: a.weights,
-    factors: { ...a.factors, state },
-    reason: `T4 advanced vol=${state} momS=${momS.toFixed(3)} momM=${momM.toFixed(3)} riskAdj=${riskAdj}`,
+    factors: { ...a.factors, state, regime: regime.available ? regime : null },
+    reason: `T4 advanced vol=${state} momS=${momS.toFixed(3)} momM=${momM.toFixed(3)} riskAdj=${riskAdj} regime=${regime.available ? regime.marketState : 'na'}`,
   };
 }
 
@@ -196,12 +202,14 @@ function reason(sig, bars, metrics) {
   const target = sig.target;
   const dir = target > last ? 'up' : target < last ? 'down' : 'flat';
   const conf = sig.confidence;
+  const regime = (sig.factors && sig.factors.regime) || sig.regime || null;
   const thesis = {
     model: sig.model,
     direction: dir,
     expectedMovePct: ((target - last) / last) * 100,
     confidence: conf,
     volState: sig.factors ? sig.factors.state : sig.volState || null,
+    regime: regime || null,
   };
   const hypotheses = [];
   if (sig.factors && sig.factors.trend > 0 && sig.factors.mom > 0) {
@@ -210,8 +218,19 @@ function reason(sig, bars, metrics) {
   if (sig.factors && sig.factors.mr > 0) {
     hypotheses.push('Price is below SMA20 — mean-reversion component favors a rebound if support holds.');
   }
-  if (thesis.volState === 'high') {
-    hypotheses.push('Elevated realized vol is shrinking the risk-adjusted target; size positions smaller.');
+  if (regime) {
+    if (regime.volTrend === 'expanding' && regime.volRegime === 'high') {
+      hypotheses.push('Volatility regime is expanding in high-vol state: shrink position size, tighten stops.');
+    }
+    if (regime.volTrend === 'contracting' && regime.volRegime !== 'high') {
+      hypotheses.push('Volatility is contracting — mean-reversion signals gain reliability; wider targets acceptable.');
+    }
+    if (regime.trendStreak >= 20) {
+      hypotheses.push(`Trend persistence ${regime.trendStreak}d (${regime.marketState}) — ride the regime but watch for vol expansion.`);
+    }
+    if (regime.trendStreak <= -20) {
+      hypotheses.push(`Downtrend persistence ${Math.abs(regime.trendStreak)}d (${regime.marketState}) — avoid long entries until regime shifts.`);
+    }
   }
   if (conf < 0.55) {
     hypotheses.push('Low model confidence: prefer to stay neutral / reduce exposure rather than force a trade.');
@@ -221,9 +240,10 @@ function reason(sig, bars, metrics) {
   }
   thesis.uncertainty = Math.round((1 - conf) * 10000) / 100;
   thesis.hypotheses = hypotheses;
+  const regimeTag = regime ? ` Regime: ${regime.marketState} (vol ${regime.volRegime}/${regime.volTrend}, streak ${regime.trendStreak}).` : '';
   thesis.thought =
     `I'm using ${sig.model} on ${bars.length} bars. Direction ${dir} with ~${Math.abs(thesis.expectedMovePct).toFixed(1)}% ` +
-    `expected move, confidence ${Math.round(conf * 100)}%. ${hypotheses[0]}`;
+    `expected move, confidence ${Math.round(conf * 100)}%.${regimeTag} ${hypotheses[0]}`;
   return thesis;
 }
 

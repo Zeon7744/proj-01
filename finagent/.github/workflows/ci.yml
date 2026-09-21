@@ -27,6 +27,8 @@ jobs:
           node --check src/agent.js
           node --check src/ops/scheduler.js
           node --check src/ops/middleware.js
+          node --check src/engines/regime.js
+          node --check src/engines/evolution.js
           node --check src/shared/contract.js
 
       - name: Unit tests
@@ -40,6 +42,7 @@ jobs:
           node scripts/collect-full.js
           node scripts/backtest.js
           node scripts/ops.js audit
+
 
 
 

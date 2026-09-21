@@ -58,7 +58,7 @@ document.getElementById('roleSelect').addEventListener('change', (e) => { role =
 document.getElementById('collectBtn').addEventListener('click', async () => {
   const btn = document.getElementById('collectBtn');
   btn.disabled = true; btn.textContent = '采集中…';
-  await api(`/agent/run`, { method: 'POST', body: JSON.stringify({ version }) });
+  await api('/agent/run', { method: 'POST', body: JSON.stringify({ version }) });
   document.getElementById('lastRun').textContent = '运行于 ' + new Date().toLocaleTimeString();
   btn.disabled = false; btn.textContent = '运行采集';
   loadAll();
@@ -79,8 +79,8 @@ async function loadAll() {
   renderModel(lastData);
   if (version === 'full') renderPredictions(lastData);
   renderOps();
+  renderEvolution();
   renderOpenApi();
-  // 恢复详情页（若已有选中）
   const sel = window.__selTicker;
   if (sel) openDetail(sel);
 }
@@ -104,6 +104,7 @@ function renderDashboard(data) {
     ? data.map((t) => {
         const ih = t.inHouse || {};
         const th = t.reasoning || {};
+        const reg = th.regime;
         return `
       <div class="row" data-tk="${t.ticker}">
         <div class="tk">${t.ticker}</div>
@@ -112,15 +113,14 @@ function renderDashboard(data) {
           <span class="tag ${t.metrics.trend === 'bullish' ? 'good' : t.metrics.trend === 'bearish' ? 'bad' : 'warn'}">${t.metrics.trend}</span>
           ${t.metrics.signal ? `<span class="tag">${t.metrics.signal}</span>` : ''}
           ${ih.model ? `<span class="tag model">${ih.model}${ih.upgraded ? ' ↑' : ''}</span>` : ''}
+          ${reg ? `<span class="tag">${reg.marketState}</span>` : ''}
         </div>
         <div class="chip">${th.direction ? `方向 ${th.direction}` : ''}${th.confidence != null ? ` · 置信 ${pct(th.confidence * 100)}` : ''}</div>
       </div>`;
       }).join('')
     : '<div class="chip">尚未运行采集，点击右上角「运行采集」</div>';
 
-  document.querySelectorAll('.dash-list .row').forEach((r) =>
-    r.addEventListener('click', () => openDetail(r.dataset.tk))
-  );
+  document.querySelectorAll('.dash-list .row').forEach((r) => r.addEventListener('click', () => openDetail(r.dataset.tk)));
 }
 
 function renderData(data) {
@@ -148,12 +148,14 @@ function renderAnalysis(data) {
         const width = rsi == null ? 50 : rsi;
         const hot = rsi > 70 ? 'var(--bad)' : rsi < 30 ? 'var(--good)' : 'var(--warn)';
         const hyp = (r.hypotheses || []).slice(0, 2).map((h) => `<div class="hyp">· ${h}</div>`).join('');
+        const reg = r.regime;
         return `
       <div class="row" data-tk="${t.ticker}" style="grid-template-columns:110px 1fr 230px">
         <div class="tk">${t.ticker}</div>
         <div class="chip">
           SMA20 ${fmt(m.sma20)} · SMA50 ${fmt(m.sma50)} · RSI ${fmt(m.rsi, 1)} · ATR ${fmt(m.atr, 2)} · Vol ${m.vol != null ? m.vol + '%' : 'n/a'}
           ${ih.model ? `<span class="tag model">${ih.model}${ih.upgraded ? ' ↑晋级' : ''}</span>` : ''}
+          ${reg ? `<span class="tag">${reg.marketState} vol:${reg.volRegime}/${reg.volTrend} streak:${reg.trendStreak}</span>` : ''}
           ${r.thought ? `<div class="chip" style="margin-top:4px">思考：${r.thought}</div>` : ''}${hyp}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
@@ -179,9 +181,10 @@ function renderPredictions(data) {
         const bt = t.backtest && t.backtest.historical ? t.backtest.historical : t.backtest;
         const acc = bt && bt.accuracyPct != null ? `<span class="tag good">历史命中 ${bt.accuracyPct}% (${bt.hits}/${bt.samples})</span>` : '<span class="chip">命中待回测</span>';
         const fb = bt && bt.adaptiveFeedback ? ` · 自适应样本 ${bt.adaptiveFeedback.length}` : '';
+        const reg = t.reasoning && t.reasoning.regime ? t.reasoning.regime.marketState : null;
         return `<div class="row" data-tk="${t.ticker}" style="grid-template-columns:110px 1fr">
           <div class="tk">${t.ticker}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${hs} ${acc}<span class="chip">${p.model ? p.model : ''}${p.upgraded ? ' ↑' : ''}${fb}</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${hs} ${acc}<span class="chip">${p.model ? p.model : ''}${p.upgraded ? ' ↑' : ''}${reg ? ` · ${reg}` : ''}${fb}</span></div>
         </div>`;
       }).join('')
     : '<div class="chip">暂无预测（请先运行完整版采集）</div>';
@@ -195,7 +198,7 @@ function renderModel(data) {
         const a = t.modelArena;
         const rows = a.scored
           .map((s) => `
-        <div class="arena-row" style="grid-template-columns:110px 1fr 120px 90px">
+        <div class="arena-row">
           <div class="tk">${t.ticker} · ${s.key}</div>
           <div style="display:flex;align-items:center;gap:8px"><div class="bar"><i style="width:${s.winRate}%;background:${s.key === a.best.key ? 'var(--accent2)' : 'var(--good)'}"></i></div></div>
           <div class="chip">胜率 ${pct(s.winRate)}</div>
@@ -224,6 +227,25 @@ async function renderOps() {
     <div class="ops-card"><div class="k">Stale 资产</div><div class="v ${r.staleTickers.length ? 'warn' : 'good'}">${r.staleTickers.length}</div></div>`;
 }
 
+async function renderEvolution() {
+  const r = await api('/evolution?limit=30');
+  const el = document.getElementById('evolutionBody');
+  if (!el) return;
+  if (!r || !r.events || !r.events.length) {
+    el.innerHTML = '<div class="chip">暂无进化事件（先运行完整版采集，晋级/校准/竞技场胜出会在此记录）</div>';
+    return;
+  }
+  el.innerHTML = r.events.map((e) => {
+    const icon = e.kind === 'promotion' ? '▲' : e.kind === 'calibration' ? '◈' : '★';
+    const cls = e.kind === 'promotion' ? 'good' : e.kind === 'calibration' ? 'warn' : '';
+    const time = e.ts ? e.ts.slice(5, 16).replace('T', ' ') : '';
+    return `<div class="evo-row"><span class="tag ${cls}">${icon} ${e.kind}</span>
+      <strong>${e.ticker}</strong>
+      <span class="chip">${e.detail}</span>
+      <span class="chip" style="margin-left:auto">${time}</span></div>`;
+  }).join('');
+}
+
 function openDetail(tk) {
   window.__selTicker = tk;
   const t = lastData.find((x) => x.ticker === tk);
@@ -236,6 +258,7 @@ function openDetail(tk) {
   const r = t.reasoning || {};
   const a = t.modelArena || {};
   const bt = t.backtest && t.backtest.historical ? t.backtest.historical : null;
+  const reg = r.regime;
   document.getElementById('detailBody').innerHTML = `
     <div id="sparkWrap"><canvas class="spark" id="sparkCanvas" width="800" height="180"></canvas></div>
     <div class="kv">
@@ -244,6 +267,13 @@ function openDetail(tk) {
       <div><div class="k">自研模型</div><div class="v">${ih.model || '–'}</div></div>
       <div><div class="k">置信度</div><div class="v">${ih.confidence != null ? pct(ih.confidence * 100) : '–'}</div></div>
     </div>
+    ${reg ? `
+    <div class="kv">
+      <div><div class="k">Regime</div><div class="v">${reg.marketState}</div></div>
+      <div><div class="k">波动率状态</div><div class="v">${reg.volRegime} · ${reg.volTrend}</div></div>
+      <div><div class="k">趋势持续</div><div class="v">${reg.trendStreak > 0 ? '+' : ''}${reg.trendStreak} 日</div></div>
+      <div><div class="k">风险调整</div><div class="v">${reg.riskAdjust}</div></div>
+    </div>` : ''}
     <div class="thought"><strong>自我思考：</strong><br>${r.thought || '—'}
       ${(r.hypotheses || []).map((h) => `<div class="hyp">• ${h}</div>`).join('')}
     </div>
@@ -252,7 +282,6 @@ function openDetail(tk) {
   drawSpark(tk);
 }
 
-// 用最近 120 根 bar 画 sparkline
 async function drawSpark(tk) {
   const c = document.getElementById('sparkCanvas');
   if (!c) return;
@@ -281,6 +310,7 @@ function renderOpenApi() {
     <div class="ep"><div class="method">GET</div><div><code>/api/tickers/{ticker}/bars</code> 原始行情，需 <code>read:data</code></div></div>
     <div class="ep"><div class="method">GET</div><div><code>/api/arena/{ticker}</code> 模型竞技场，需 <code>read:analysis</code></div></div>
     <div class="ep"><div class="method">GET</div><div><code>/api/predictions</code> / <code>/api/backtest/{ticker}</code>，需 <code>read:predictions</code></div></div>
+    <div class="ep"><div class="method">GET</div><div><code>/api/evolution?limit=N</code> 自我升级日志，需 <code>read:analysis</code></div></div>
     <div class="ep"><div class="method">POST</div><div><code>/api/agent/run</code> 触发采集+分析+预测+命中+自我升级，需 <code>write:collect</code></div></div>
     <div class="ep"><div class="method">OPS</div><div><code>/api/ops/health|audit|backup|prune|jobs</code>，需 <code>manage:ops</code>（admin）</div></div>
     <div class="ep"><div class="method">AUTH</div><div><code>Authorization: Bearer &lt;key&gt;</code>；角色 viewer/analyst/admin；严格模式需 key</div></div>
