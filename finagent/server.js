@@ -21,18 +21,20 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '2mb' }));
 
-// 鉴权 + 审计 + 限流（限流按会员等级配额）
+// 中间件顺序：审计 → 鉴权 → 限流。
+// 限流依赖 auth 挂载到 req.ctx 的 tier，必须放在 auth 之后，
+// 否则 perIdentity 读不到会员等级，所有请求都会 fallback 到 free 配额。
 app.use(auditLog());
+app.use(auth);
 app.use('/api', rateLimit({
   windowMs: 60 * 1000,
   max: parseInt(process.env.FINAGENT_RATE_MAX || '120', 10),
   perIdentity: (req) => {
     // 按会员等级配额：free 60 / pro 300 / enterprise 1200（每 60s）
-    const tier = req.ctx ? req.ctx.tier : tierOf((req.ctx && req.ctx.role) || 'viewer');
+    const tier = (req.ctx && req.ctx.tier) || tierOf((req.ctx && req.ctx.role) || 'viewer');
     return TIER[tier] ? TIER[tier].apiRate : 60;
   },
 }));
-app.use(auth);
 
 // ---------------------------------------------------------------------------
 // 基础端点

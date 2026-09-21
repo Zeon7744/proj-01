@@ -8,6 +8,7 @@ const KEY_BY_ROLE = {
 let version = 'full';
 let role = 'admin';
 let lastData = [];
+let tierInfo = null;
 
 function headers() {
   return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${KEY_BY_ROLE[role]}` };
@@ -71,6 +72,10 @@ document.getElementById('refreshBtn').addEventListener('click', loadAll);
 
 // ---------------- load ----------------
 async function loadAll() {
+  const tierRes = await api('/tier');
+  tierInfo = tierRes || null;
+  applyTierUI(tierInfo);
+
   const data = await api(`/tickers/all?version=${version}`);
   lastData = (data && data.records) || [];
   renderDashboard(lastData);
@@ -81,8 +86,88 @@ async function loadAll() {
   renderOps();
   renderEvolution();
   renderOpenApi();
+  if (document.getElementById('page-tier').classList.contains('active')) renderTierPage();
   const sel = window.__selTicker;
   if (sel) openDetail(sel);
+}
+
+
+// ---------------- 会员等级 UI ----------------
+function applyTierUI(tier) {
+  if (!tier) return;
+  const badge = document.getElementById('tierBadge');
+  if (badge) {
+    badge.textContent = tier.label + ' · ' + tier.tier;
+    badge.title = '当前会员等级：' + tier.label + '，API 配额 ' + tier.quotas.apiRate + '/60s，密钥配额 ' + (tier.quotas.keyQuota === Infinity ? '不限' : tier.quotas.keyQuota);
+  }
+
+  const versions = (tier.features.versions) || ['lite'];
+  document.querySelectorAll('#versionToggle .vbtn').forEach((b) => {
+    b.style.display = versions.includes(b.dataset.v) ? '' : 'none';
+  });
+  if (!versions.includes(version)) {
+    version = versions[0] || 'lite';
+    document.querySelectorAll('#versionToggle .vbtn').forEach((b) => b.classList.toggle('active', b.dataset.v === version));
+  }
+
+  const f = tier.features || {};
+  const tabMap = { prediction: !!f.predict, model: !!f.modelArena, evolution: true, tier: true };
+  document.querySelectorAll('.nav-item').forEach((b) => {
+    const page = b.dataset.page;
+    if (page in tabMap) b.style.display = tabMap[page] ? '' : 'none';
+  });
+
+  const evoLimit = f.evolutionLimit;
+  const evoNote = document.getElementById('evolutionNote');
+  if (evoNote) evoNote.textContent = evoLimit === Infinity ? '全部事件（流式）' : ('最近 ' + evoLimit + ' 条（升级解锁更多）');
+}
+
+async function renderTierPage() {
+  const r = await api('/tier');
+  if (!r) return;
+  tierInfo = r;
+  applyTierUI(r);
+
+  const TIER_MATRIX = [
+    { tier: 'free', label: '免费版', version: 'lite', predict: false, hitBacktest: false, regimeAware: false, modelArena: false, evolutionLimit: 20, apiRate: 60, keyQuota: 1, lookbackDays: 365 },
+    { tier: 'pro', label: '专业版', version: 'lite+full', predict: true, hitBacktest: true, regimeAware: false, modelArena: true, evolutionLimit: 200, apiRate: 300, keyQuota: 5, lookbackDays: 3650 },
+    { tier: 'enterprise', label: '企业版', version: 'lite+full', predict: true, hitBacktest: true, regimeAware: true, modelArena: true, evolutionLimit: Infinity, apiRate: 1200, keyQuota: Infinity, lookbackDays: 3650 },
+  ];
+  const cur = r.tier;
+  const cols = ['功能'].concat(TIER_MATRIX.map((t) => '<th class="' + (t.tier === cur ? 'cur' : '') + '">' + t.label + '</th>')).join('');
+  const rowsDef = [
+    ['支持版本', (t) => t.version],
+    ['预测', (t) => (t.predict ? '✓' : '—')],
+    ['命中回测', (t) => (t.hitBacktest ? '✓' : '—')],
+    ['模型竞技场', (t) => (t.modelArena ? '✓' : '—')],
+    ['Regime 感知', (t) => (t.regimeAware ? '✓' : '—')],
+    ['进化日志', (t) => (t.evolutionLimit === Infinity ? '全部' : '最近 ' + t.evolutionLimit)],
+    ['API 配额', (t) => t.apiRate + '/min'],
+    ['密钥配额', (t) => (t.keyQuota === Infinity ? '不限' : String(t.keyQuota))],
+    ['数据回溯', (t) => t.lookbackDays + 'd'],
+  ];
+  const tbody = rowsDef.map(([name, fn]) => {
+    const tds = TIER_MATRIX.map((t) => '<td class="' + (t.tier === cur ? 'cur' : '') + '">' + fn(t) + '</td>').join('');
+    return '<tr><td class="k">' + name + '</td>' + tds + '</tr>';
+  }).join('');
+  const matrix = document.getElementById('tierMatrix');
+  if (matrix) {
+    matrix.innerHTML = '<table class="tier-table"><thead><tr>' + cols + '</tr></thead><tbody>' + tbody + '</tbody></table>';
+  }
+
+  const detail = document.getElementById('tierDetail');
+  if (detail) {
+    const f = r.features || {};
+    const q = r.quotas || {};
+    detail.innerHTML = '<div class="kv">' +
+      '<div><div class="k">当前角色</div><div class="v">' + r.role + '</div></div>' +
+      '<div><div class="k">当前等级</div><div class="v"><span class="tag ' + (cur === 'enterprise' ? 'good' : cur === 'pro' ? 'warn' : '') + '">' + r.label + '</span></div></div>' +
+      '<div><div class="k">支持版本</div><div class="v">' + (f.versions || []).join(' / ') + '</div></div>' +
+      '<div><div class="k">API 配额</div><div class="v">' + q.apiRate + ' / min</div></div>' +
+      '<div><div class="k">密钥配额</div><div class="v">' + (q.keyQuota === Infinity ? '不限' : q.keyQuota) + '</div></div>' +
+      '<div><div class="k">数据回溯</div><div class="v">' + q.lookbackDays + ' 天</div></div>' +
+      '</div>';
+  }
 }
 
 function renderDashboard(data) {
@@ -228,22 +313,41 @@ async function renderOps() {
 }
 
 async function renderEvolution() {
-  const r = await api('/evolution?limit=30');
+  const limit = (tierInfo && tierInfo.features && tierInfo.features.evolutionLimit === Infinity) ? 200 : 30;
+  const r = await api('/evolution?limit=' + limit);
   const el = document.getElementById('evolutionBody');
   if (!el) return;
   if (!r || !r.events || !r.events.length) {
     el.innerHTML = '<div class="chip">暂无进化事件（先运行完整版采集，晋级/校准/竞技场胜出会在此记录）</div>';
     return;
   }
-  el.innerHTML = r.events.map((e) => {
+  const ev = r.events;
+  const promotions = ev.filter((e) => e.kind === 'promotion');
+
+  let timeline = '';
+  if (promotions.length) {
+    timeline = '<div class="panel" style="margin-bottom:14px">';
+    timeline += '<h3 style="font-size:13px;margin-bottom:8px">晋级时间线</h3>';
+    timeline += '<div class="timeline">';
+    promotions.slice().reverse().forEach((e, idx, arr) => {
+      const last = idx === 0;
+      const time = e.ts ? e.ts.slice(5, 16).replace('T', ' ') : '';
+      timeline += '<div class="tl-node ' + (last ? 'latest' : '') + '">';
+      timeline += '<div class="tl-dot"></div>';
+      timeline += '<div class="tl-body"><strong>' + e.ticker + '</strong> ' + (e.detail || '') + '<div class="tl-time">' + time + '</div></div>';
+      timeline += '</div>';
+    });
+    timeline += '</div></div>';
+  }
+
+  const list = ev.map((e) => {
     const icon = e.kind === 'promotion' ? '▲' : e.kind === 'calibration' ? '◈' : '★';
     const cls = e.kind === 'promotion' ? 'good' : e.kind === 'calibration' ? 'warn' : '';
     const time = e.ts ? e.ts.slice(5, 16).replace('T', ' ') : '';
-    return `<div class="evo-row"><span class="tag ${cls}">${icon} ${e.kind}</span>
-      <strong>${e.ticker}</strong>
-      <span class="chip">${e.detail}</span>
-      <span class="chip" style="margin-left:auto">${time}</span></div>`;
+    return '<div class="evo-row"><span class="tag ' + cls + '">' + icon + ' ' + e.kind + '</span> <strong>' + e.ticker + '</strong> <span class="chip">' + (e.detail||'') + '</span> <span class="chip" style="margin-left:auto">' + time + '</span></div>';
   }).join('');
+
+  el.innerHTML = timeline + '<div style="display:flex;flex-direction:column;gap:8px">' + list + '</div>';
 }
 
 function openDetail(tk) {

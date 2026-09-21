@@ -124,6 +124,10 @@ function applyTier(snap, role) {
     if (out.reasoning && out.reasoning.regime) {
       out.reasoning = { ...out.reasoning, regime: undefined };
     }
+    // 非企业：同样隐藏竞技场的 regime 分组（byRegime）
+    if (out.modelArena && out.modelArena.byRegime) {
+      out.modelArena = { ...out.modelArena, byRegime: undefined };
+    }
   }
   if (!t.modelArena) delete out.modelArena;
   return out;

@@ -1,0 +1,95 @@
+/* 会员等级 */
+.tier-badge {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(59,130,246,.18), rgba(34,211,238,.18));
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent2);
+  cursor: default;
+}
+.tier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tier-table th, .tier-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+.tier-table thead th {
+  background: #0b0f1a;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.tier-table td.k, .tier-table th:first-child {
+  text-align: left;
+  color: var(--muted);
+}
+.tier-table .cur {
+  background: rgba(59,130,246,.12);
+  color: var(--accent2);
+  font-weight: 600;
+}
+.tier-detail { margin-top: 8px; }
+
+/* 进化时间线（晋级 timeline） */
+.timeline {
+  position: relative;
+  padding-left: 22px;
+  margin: 12px 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--accent2));
+  opacity: .6;
+}
+.tl-node {
+  position: relative;
+  margin-bottom: 14px;
+}
+.tl-node:last-child { margin-bottom: 0; }
+.tl-dot {
+  position: absolute;
+  left: -18px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.tl-node.latest .tl-dot {
+  background: var(--good);
+  box-shadow: 0 0 0 2px var(--good);
+}
+.tl-body {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tl-node.latest .tl-body {
+  border-color: var(--good);
+}
+.tl-time {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}

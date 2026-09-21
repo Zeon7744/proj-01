@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FinAgent · 全球金融数据智能分析 Agent 控制台</title>
   <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/tier.css" />
 </head>
 <body>
   <aside class="sidenav">
@@ -17,6 +18,7 @@
       <button class="nav-item" data-page="prediction">预测 & 命中</button>
       <button class="nav-item" data-page="model">模型竞技场</button>
       <button class="nav-item" data-page="evolution">自我升级日志</button>
+      <button class="nav-item" data-page="tier">会员等级</button>
       <button class="nav-item" data-page="ops">运维</button>
       <button class="nav-item" data-page="openapi">开放 API</button>
     </nav>
@@ -31,6 +33,7 @@
         <button class="vbtn active" data-v="full">完整版</button>
         <button class="vbtn" data-v="lite">简版</button>
       </div>
+      <span class="tier-badge" id="tierBadge" title="当前会员等级">–</span>
     </div>
   </aside>
 
@@ -89,6 +92,16 @@
       <div class="panel">
         <h2>自我升级 / 权重校准 / 竞技场胜出</h2>
         <div id="evolutionBody" style="display:flex;flex-direction:column;gap:8px;max-height:600px;overflow:auto"></div>
+        <div class="evolution-note" id="evolutionNote" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+      </div>
+    </section>
+
+    <section id="page-tier" class="page">
+      <div class="panel">
+        <h2>会员等级 · 功能开放矩阵</h2>
+        <div id="tierMatrix" class="tier-matrix"></div>
+        <h3 style="margin-top:18px;font-size:14px">当前等级详情</h3>
+        <div id="tierDetail" class="tier-detail"></div>
       </div>
     </section>
 
