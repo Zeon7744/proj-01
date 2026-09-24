@@ -1,7 +1,7 @@
 {
   "name": "finagent",
-  "version": "1.2.0",
-  "description": "FinAgent - global financial data collection & high-precision in-house analysis agent (lite/full), multi-source collection + self-upgrade + regime-aware + hit-rate backtest + RBAC + open API + three-end sharing + ops",
+  "version": "1.3.0",
+  "description": "FinAgent - global financial data collection & high-precision in-house analysis agent (lite/full), digital-worker division + market-benchmark gap + membership tiers + regime-aware + hit-rate backtest + RBAC + open API + three-end sharing + ops",
   "main": "server.js",
   "license": "MIT",
   "scripts": {

@@ -1,0 +1,18 @@
+case 'strategist':
+        produced = ar && ar.byRegime ? `${Object.keys(ar.byRegime).length} regimes scored` : '-';
+        status = ar && ar.byRegime ? 'ok' : 'skipped';
+        break;
+    }
+    return { key: w.key, title: w.title, produced, status };
+  });
+  return {
+    tier,
+    roster: rows.map((r) => r.key),
+    headcount: rows.length,
+    rows,
+    benchmark: extra.benchmark || null,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+module.exports = { ROLES, ROSTERS, rosterFor, workerReport };

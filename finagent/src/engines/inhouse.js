@@ -1,6 +1,7 @@
 'use strict';
 
 const regimeModule = require('./regime');
+const market = require('./market');
 
 // 自研分析算法（in-house），分四个阶段，随“分析数据量”自动晋级：
 //   T1 lite   : 规则 + 简单指标（数据少 -> 简单）
@@ -110,9 +111,13 @@ function t4Advanced(bars, feedback) {
   const state = volState(vol);
   const regime = regimeModule.regimeFeatures(bars);
   const riskAdj = regime.available ? regime.riskAdjust : state === 'high' ? 0.6 : state === 'mid' ? 0.8 : 1.0;
+  // 市场情绪 + 宏观 资金面（数字员工 market，随数据量/配置开放）
+  const mkt = market.marketSignal(bars, {});
+  const sentimentAdj = mkt.available ? 0.9 + mkt.composite * 0.2 : 1.0; // 0.9~1.1
   const a = t3Adaptive(bars, feedback);
   const combined = a.weights.trend * momM + a.weights.mom * momS * 0.5 + a.weights.mr * 0;
   const ret5 = combined * riskAdj * 5;
+  const ret5Final = ret5 * sentimentAdj;
   return {
     model: 'T4-advanced',
     target: last * (1 + ret5),
@@ -203,6 +208,7 @@ function reason(sig, bars, metrics) {
   const dir = target > last ? 'up' : target < last ? 'down' : 'flat';
   const conf = sig.confidence;
   const regime = (sig.factors && sig.factors.regime) || sig.regime || null;
+  const market = sig.market || null;
   const thesis = {
     model: sig.model,
     direction: dir,
@@ -210,6 +216,7 @@ function reason(sig, bars, metrics) {
     confidence: conf,
     volState: sig.factors ? sig.factors.state : sig.volState || null,
     regime: regime || null,
+    market: market || null,
   };
   const hypotheses = [];
   if (sig.factors && sig.factors.trend > 0 && sig.factors.mom > 0) {
@@ -232,6 +239,20 @@ function reason(sig, bars, metrics) {
       hypotheses.push(`Downtrend persistence ${Math.abs(regime.trendStreak)}d (${regime.marketState}) — avoid long entries until regime shifts.`);
     }
   }
+  if (market) {
+    if (market.news && market.news.sentiment > 0.4) {
+      hypotheses.push('Positive news sentiment (hot events) - short-term bid likely to hold, but watch for fade after the move.');
+    }
+    if (market.news && market.news.sentiment < -0.4) {
+      hypotheses.push('Negative news sentiment - downside pressure may extend; avoid catching the falling knife.');
+    }
+    if (market.macro && market.macro.stance === 'hawkish') {
+      hypotheses.push('Macro stance hawkish (rate/inflation proxy) - discount later cash flows, prefer relative strength over beta.');
+    }
+    if (market.macro && market.macro.stance === 'dovish') {
+      hypotheses.push('Macro stance dovish - liquidity tailwind favors extended rallies; wider stops acceptable.');
+    }
+  }
   if (conf < 0.55) {
     hypotheses.push('Low model confidence: prefer to stay neutral / reduce exposure rather than force a trade.');
   }
@@ -241,9 +262,10 @@ function reason(sig, bars, metrics) {
   thesis.uncertainty = Math.round((1 - conf) * 10000) / 100;
   thesis.hypotheses = hypotheses;
   const regimeTag = regime ? ` Regime: ${regime.marketState} (vol ${regime.volRegime}/${regime.volTrend}, streak ${regime.trendStreak}).` : '';
+  const marketTag = market ? ` Market: ${market.note}.` : '';
   thesis.thought =
     `I'm using ${sig.model} on ${bars.length} bars. Direction ${dir} with ~${Math.abs(thesis.expectedMovePct).toFixed(1)}% ` +
-    `expected move, confidence ${Math.round(conf * 100)}%.${regimeTag} ${hypotheses[0]}`;
+    `expected move, confidence ${Math.round(conf * 100)}%.${regimeTag}${marketTag} ${hypotheses[0]}`;
   return thesis;
 }
 

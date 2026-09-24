@@ -74,6 +74,12 @@ app.get('/api/meta', (req, res) => {
     versions: ['lite', 'full'],
     activeRole: currentIdentity(req).role,
     tier: currentIdentity(req).tier,
+    release: {
+      version: '1.3.0',
+      label: 'Digital Workers · Benchmark Gap',
+      highlights: ['数字员工 7 岗精准分工', '市场基准对标（MRS 差距分析）', '会员等级 free/pro/enterprise', 'regime 感知 T4', 'walk-forward 自我升级'],
+      releasedAt: new Date().toISOString(),
+    },
     notes: {
       lite: '简版：数据量少、算法简单、有分析、无预测',
       full: '完整版：10 年大数据量、精准自研算法、预测开放、命中可检测、可自我升级',

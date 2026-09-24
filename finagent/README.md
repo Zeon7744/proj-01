@@ -3,6 +3,8 @@
 [![CI](https://github.com/OWNER/finagent/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/finagent/actions)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![node: 18+](https://img.shields.io/badge/node-18%2B-brightgreen.svg)](https://nodejs.org/)
+[![release: 1.3.0 · Digital Workers](https://img.shields.io/badge/release-1.3.0%20·%20Digital%20Workers-22d3ee?style=flat-square)](./docs/DIGITAL_WORKERS.md)
+[![benchmark: MRS gap](https://img.shields.io/badge/benchmark-MRS%20Gap-Fbbf24?style=flat-square)](./docs/BENCHMARK.md)
 
 可放在 **GitHub** 分享的全栈金融 agent：多源采集全球金融资产（股票、指数、ETF、加密、外汇、大宗）最长 10 年日线行情，实时增量迭代；分析算法是**自研高精度 in-house 模型**（T1 规则 → T2 多因子 → T3 自适应 → T4 进阶 + **regime 感知**），能**随数据量晋级、walk-forward 验证、自我校准权重、感知市场状态、生成假设与不确定度**（自我思考能力）；完整版开放多周期预测并做**命中检测 / 历史 dry-run 回测**；带 **RBAC 权限隔离**、**应用开放 API**、**三端共享契约**与**运维能力**（健康 / 备份 / 定时任务 / 限流 / 审计）。
 
@@ -28,6 +30,18 @@
 - **自我思考**：`reason()` 输出方向、预期涨跌、置信度、不确定度、假设列表、regime 与自然语言“思考”。
 - 详见 [docs/ALGORITHM.md](./docs/ALGORITHM.md)。
 
+## 数字员工 · 精准分工
+
+把 agent 流水线拆成 **7 个数字员工岗位**（采集员 / 分析师 / 建模师 / 预测员 / 回测员 / 审计员 / 策略师），单一职责、可审计、可替换。
+不同会员等级开放不同在岗人数：`free=3 人` / `pro=5 人` / `enterprise=7 人`。每次运行产出统一的“岗位报告”（`workerReport`）随快照返回三端。
+详见 [docs/DIGITAL_WORKERS.md](./docs/DIGITAL_WORKERS.md)。
+
+## 市场基准对标（MRS 差距分析）
+
+策略师（enterprise 专属）用**等权组合市场相对强弱（MRS）**作为代理基准，对比自研 T 系列的 walk-forward 命中率与超额收益，输出“领先 / 落后 / 持平”差距报告（`benchmarkGap`），回答“自研算法相比市场到底好/差多少”。
+详见 [docs/BENCHMARK.md](./docs/BENCHMARK.md)。
+
+
 ## 会员等级（free / pro / enterprise）
 
 在 RBAC 角色（操作权限）之上叠加**会员等级（功能开放 + 配额）**两个维度，二者正交：角色决定能否做某类操作，会员等级决定开放哪些功能与多少配额。
@@ -39,6 +53,8 @@
 | 命中回测 | ❌ | ✅（基础） | ✅（含 regime） |
 | 模型竞技场 | ❌ | ✅ | ✅（含 byRegime） |
 | Regime 感知 | ❌ | ❌ | ✅ |
+| 数字员工（在岗人数） | 3 人（lite3） | 5 人（pro5） | 7 人（enterprise7） |
+| 市场基准对标（MRS 差距） | ❌ | ❌ | ✅ |
 | 进化日志 | 最近 20 | 最近 200 | 全部（流式） |
 | API 配额 | 60/min | 300/min | 1200/min |
 | 密钥配额 | 1 | 5 | 不限 |
@@ -117,6 +133,7 @@ finagent/
 ├─ src/
 │  ├─ collectors/{index,yfinance,alpha_vantage,base}.js   # 多源聚合 + 模拟回退
 │  ├─ engines/{analyze,inhouse,regime,arena,predict,backtest,dryrun,evolution}.js
+│  │   # workers.js 数字员工分工 · benchmark.js 市场基准对标
 │  ├─ store/db.js
 │  ├─ shared/{contract,client}.js                         # 三端共享契约 + 客户端
 │  ├─ ops/{logger,health,backup,scheduler,middleware}.js  # 运维

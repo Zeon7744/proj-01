@@ -115,3 +115,4 @@ async function collectPriceData(ticker, cfg, log) {
 }
 
 module.exports = { collectPriceData, simulateSeries, base, round2, normalize };
+module.exports.seededRandom = seededRandom;

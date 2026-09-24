@@ -15,14 +15,20 @@
 // 该模块是纯函数，不写盘，保证可测试、可离线运行。
 
 const ROSTERS = {
-  // 键与 TIER.workerRoster 对齐（lite3 / pro5 / enterprise7）
+  // 键与 TIER.workerRoster 对齐（lite3 / pro6 / enterprise9）
+  // lite3:      采集员 / 分析师 / 预测员
+  // pro6:       + 建模师 / 回测员 / 情报员
+  // enterprise9: + 审计员 / 策略师 / 风控员
   lite3: ['collector', 'analyst', 'forecaster'],
-  pro5: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester'],
-  enterprise7: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'auditor', 'strategist'],
+  pro6: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'newswatcher'],
+  enterprise9: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'newswatcher', 'auditor', 'strategist', 'riskmanager'],
   // 别名：按 tier 名（free/pro/enterprise）直接查
   free: ['collector', 'analyst', 'forecaster'],
-  pro: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester'],
-  enterprise: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'auditor', 'strategist'],
+  pro: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'newswatcher'],
+  enterprise: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'newswatcher', 'auditor', 'strategist', 'riskmanager'],
+  // 兼容旧键（pro5 / enterprise7）
+  pro5: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester'],
+  enterprise7: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'auditor', 'strategist'],
 };
 
 // 每个数字员工的职责描述 + 输入输出契约
@@ -68,6 +74,18 @@ const ROLES = {
     duty: 'regime 分组竞技场 + 对标基准差距分析，输出市场对比报告（enterprise 专属）',
     input: ['modelArena', 'benchmark'],
     output: ['byRegime', 'benchmarkGap'],
+  },
+  newswatcher: {
+    title: '情报员',
+    duty: '新闻情绪聚合（事件密度 / 热点事件 / 情绪打分）+ 宏观姿态（利率/通胀代理），产出市场情绪信号',
+    input: ['newsFeed', 'macro', 'bars'],
+    output: ['newsSentiment', 'macroSignals', 'marketSignal'],
+  },
+  riskmanager: {
+    title: '风控员',
+    duty: '按波动率/regime/情绪调整仓位与止损建议，输出风险预算与仓位缩放系数',
+    input: ['regime', 'market', 'prediction'],
+    output: ['positionSize', 'stopLoss', 'riskBudget'],
   },
 };
 

@@ -1,0 +1,33 @@
+switch (w.key) {
+      case 'collector':
+        produced = `${(tickerResult.multi || []).map((m) => m.source + ':' + m.bars).join(' ') || tickerResult.source} · ${(tickerResult.bars || 0)} bars`;
+        status = tickerResult.bars ? 'ok' : 'no-data';
+        break;
+      case 'analyst':
+        produced = tickerResult.metrics ? `trend=${tickerResult.metrics.trend} rsi=${(tickerResult.metrics.rsi || 0).toFixed ? tickerResult.metrics.rsi.toFixed(1) : tickerResult.metrics.rsi}` : '-';
+        status = tickerResult.metrics ? 'ok' : 'idle';
+        break;
+      case 'modeler':
+        produced = ih ? `${ih.model} (tier ${ih.tier}${ih.upgraded ? ' ↑' : ''})` : '-';
+        status = ih ? 'ok' : 'skipped';
+        break;
+      case 'forecaster':
+        produced = tickerResult.prediction && tickerResult.prediction.horizons
+          ? tickerResult.prediction.horizons.map((h) => `${h.days}d→${h.target}(${h.expectedReturnPct > 0 ? '+' : ''}${h.expectedReturnPct}%)`).join(' ')
+          : '-';
+        status = tickerResult.prediction ? 'ok' : 'skipped';
+        break;
+      case 'backtester':
+        produced = bt && bt.historical
+          ? `hit ${bt.historical.hits}/${bt.historical.samples}=${bt.historical.accuracyPct}%`
+          : bt && bt.hitRate != null
+            ? `live hitRate ${bt.hitRate}%`
+            : '-';
+        status = bt ? 'ok' : 'skipped';
+        break;
+      case 'auditor':
+        produced = extra.evolutionCount != null ? `${extra.evolutionCount} events archived` : 'pending';
+        status = extra.evolutionCount != null ? 'ok' : 'idle';
+        break;
+      case 'strategist':
+        produced = ar && ar.byRegime ? `${Object.keys(ar.byRegime).length} regime
