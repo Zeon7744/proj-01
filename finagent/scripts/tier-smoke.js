@@ -6,7 +6,7 @@ const s=app.listen(0,async()=>{
   async function get(path,key){
     return await new Promise((resolve,reject)=>{
       const req=http.get({host:'127.0.0.1',port,path,headers:key?{Authorization:'Bearer '+key}:{}},(res)=>{
-        let b='';res.on('data',d=>b+=d);res.on('end',()=>resolve({status:res.status,body:b}));
+      let b='';res.on('data',d=>b+=d);res.on('end',()=>resolve({status:res.statusCode,body:b}));
       });
       req.on('error',reject);
     });
@@ -17,8 +17,8 @@ const s=app.listen(0,async()=>{
     for(const [label,key] of keys){
       const out=[];
       for(const p of paths){
-        const r=await get(p,key);
-        out.push((p.replace('/api','')+'='+r.status).padEnd(30));
+      const r=await get(p,key);
+      out.push((p.replace('/api','')+'='+r.status).padEnd(30));
       }
       console.log(label.padEnd(8)+'  '+out.join('  '));
     }

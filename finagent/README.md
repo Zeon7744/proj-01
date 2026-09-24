@@ -28,6 +28,24 @@
 - **自我思考**：`reason()` 输出方向、预期涨跌、置信度、不确定度、假设列表、regime 与自然语言“思考”。
 - 详见 [docs/ALGORITHM.md](./docs/ALGORITHM.md)。
 
+## 会员等级（free / pro / enterprise）
+
+在 RBAC 角色（操作权限）之上叠加**会员等级（功能开放 + 配额）**两个维度，二者正交：角色决定能否做某类操作，会员等级决定开放哪些功能与多少配额。
+
+| 功能 | free | pro | enterprise |
+| --- | --- | --- | --- |
+| 支持版本 | lite | lite + full | lite + full |
+| 预测 | ❌ | ✅ | ✅ |
+| 命中回测 | ❌ | ✅（基础） | ✅（含 regime） |
+| 模型竞技场 | ❌ | ✅ | ✅（含 byRegime） |
+| Regime 感知 | ❌ | ❌ | ✅ |
+| 进化日志 | 最近 20 | 最近 200 | 全部（流式） |
+| API 配额 | 60/min | 300/min | 1200/min |
+| 密钥配额 | 1 | 5 | 不限 |
+| 数据回溯 | 365 天 | 3650 天 | 3650 天+ |
+
+内置演示账号映射：`viewer → free`、`analyst → pro`、`admin → enterprise`。`GET /api/tier` 自省当前等级的开放功能与配额。详见 [docs/ENTITLEMENTS.md](./docs/ENTITLEMENTS.md)。
+
 ## 权限隔离 & 应用开放
 
 | 角色 | API Key（默认） | 权限（scope） |
@@ -104,6 +122,7 @@ finagent/
 │  ├─ ops/{logger,health,backup,scheduler,middleware}.js  # 运维
 │  ├─ agent.js                                             # 编排
 │  └─ auth/rbac.js                                         # 权限隔离
+│  └─ entitlements/tiers.js                                # 会员等级矩阵 + applyTier
 ├─ server.js
 ├─ public/{index.html,css/app.css,js/app.js}               # 控制台
 ├─ scripts/{collect-lite,collect-full,backtest,evolve,ops,serve}.js

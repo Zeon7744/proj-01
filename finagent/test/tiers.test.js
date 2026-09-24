@@ -56,14 +56,13 @@ test('applyTier strips predict/regime/arena for free', () => {
     metrics: { lastPrice: 100 },
   };
   const out = applyTier(snap, 'viewer');
+  // free 用户访问 full 快照：prediction / backtest / modelArena / inHouse 整体被剥掉（降级为 lite 字段）
   assert.strictEqual(out.prediction, undefined);
   assert.strictEqual(out.backtest, undefined);
   assert.strictEqual(out.modelArena, undefined);
-  // inHouse 保留但 regime 被隐藏
-  assert.ok(out.inHouse);
-  assert.strictEqual(out.inHouse.regime, undefined);
-  assert.strictEqual(out.inHouse.factors.regime, undefined);
-  // reasoning.regime 也隐藏
+  assert.strictEqual(out.inHouse, undefined);
+  // reasoning.regime 也隐藏（但 reasoning 本身保留）
+  assert.ok(out.reasoning);
   assert.strictEqual(out.reasoning.regime, undefined);
   // 基础字段保留
   assert.strictEqual(out.metrics.lastPrice, 100);
