@@ -12,6 +12,9 @@ const backtestEngine = require('./engines/backtest');
 const dryrun = require('./engines/dryrun');
 const evolution = require('./engines/evolution');
 const db = require('./store/db');
+const workers = require('./engines/workers');
+const benchmark = require('./engines/benchmark');
+const { TIER, tierOf } = require('./entitlements/tiers');
 
 async function runAgent(versionKey, opts = {}, log = () => {}) {
   const cfg = versions[versionKey] || versions.lite;
@@ -109,6 +112,24 @@ async function runAgent(versionKey, opts = {}, log = () => {}) {
         evolution.record(ev);
       });
     }
+
+    // 9) 数字员工岗位报告（按会员等级分工：free 3 人 / pro 5 人 / enterprise 7 人）
+    // 采集员 + 分析师 为全员在岗；建模师/回测员/审计员/策略师 随等级开放。
+    const tier = tierOf(opts.tierRole || 'admin');
+    const rec = out.tickers[out.tickers.length - 1];
+    const wr = workers.workerReport(tier, rec, {});
+    rec.workerReport = wr;
+
+    // 10) 策略师：基准对标（仅 enterprise 保留；其他等级由 applyTier 隐藏）
+    if (tier === 'enterprise' && cfg.predict.enabled && bars.length >= 252) {
+      rec.benchmarkGap = benchmark.benchmarkGap([bars], { modelKey: inHouse ? inHouse.model : 'T4-advanced' });
+      const strat = wr.rows.find((r) => r.key === 'strategist');
+      if (strat && rec.benchmarkGap && rec.benchmarkGap.available) {
+        strat.produced = `MRS 基准 ${rec.benchmarkGap.summary.verdict} · 平均超额 ${rec.benchmarkGap.summary.avgOutperformancePct}% · 模型命中 ${rec.benchmarkGap.summary.avgModelHitRate}%`;
+        strat.status = 'ok';
+      }
+      rec.workerReport.benchmark = rec.benchmarkGap;
+    }
   }
 
   out.finishedAt = new Date().toISOString();
@@ -176,6 +197,8 @@ function getSnapshot(versionKey, ticker) {
     reasoning: rec.reasoning,
     modelArena: rec.modelArena,
     updatedAt: rec.updatedAt,
+    workerReport: rec.workerReport || null,
+    benchmarkGap: rec.benchmarkGap || null,
   };
   if (cfg.predict.enabled && rec.prediction) {
     slim.prediction = rec.prediction;

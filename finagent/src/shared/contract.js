@@ -54,6 +54,22 @@ const SNAPSHOT_SHAPE = {
     accuracyPct: 'number', hitPoints: 'number', totalForecastPoints: 'number',
     adaptiveFeedback: 'array of {days, predErr, absErr, hit}（回灌 T3/T4 自我校准）',
   },
+  // 数字员工岗位报告（按会员等级分工：free 3 人 / pro 5 人 / enterprise 7 人）
+  workerReport: {
+    tier: 'string (free|pro|enterprise)',
+    roster: 'array of worker keys (该等级在岗名单)',
+    headcount: 'number',
+    rows: 'array of {key, title, produced, status}', // 每个数字员工一行岗位报告
+    benchmark: 'object|null (策略师产出的基准对标报告，仅 enterprise)',
+  },
+  // 基准对标（market-relative strength gap，仅 enterprise）
+  benchmarkGap: {
+    available: 'boolean',
+    benchmark: 'string (基准名称)',
+    summary: { verdict: "'outperforming'|'underperforming'|'on-par'", avgOutperformancePct: 'number', avgModelHitRate: 'number', winners: 'number', losers: 'number' },
+    perTicker: 'array of {ticker, mrsRetPct, outperformancePct, modelHitRate, regime}',
+    gapNote: 'string (自然语言差距结论)',
+  },
 };
 
 // 校验一个快照是否满足契约（用于三端一致性检查 / CI）

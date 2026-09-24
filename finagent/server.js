@@ -57,6 +57,8 @@ app.get('/api/tier', (req, res) => {
       regimeAware: TIER[id.tier].regimeAware,
       modelArena: TIER[id.tier].modelArena,
       evolutionLimit: TIER[id.tier].evolutionLimit,
+      workerRoster: TIER[id.tier].workerRoster,
+      benchmarkGap: TIER[id.tier].benchmarkGap,
     },
     quotas: {
       apiRate: TIER[id.tier].apiRate,

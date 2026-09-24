@@ -33,6 +33,8 @@ const TIER = {
     apiRate: 60,
     keyQuota: 1,
     lookbackDays: 365,
+    workerRoster: 'lite3',
+    benchmarkGap: false,
   },
   pro: {
     label: '专业版',
@@ -45,6 +47,8 @@ const TIER = {
     apiRate: 300,
     keyQuota: 5,
     lookbackDays: 3650,
+    workerRoster: 'pro5',
+    benchmarkGap: false,
   },
   enterprise: {
     label: '企业版',
@@ -57,6 +61,8 @@ const TIER = {
     apiRate: 1200,
     keyQuota: Infinity,
     lookbackDays: 3650,
+    workerRoster: 'enterprise7',
+    benchmarkGap: true,
   },
 };
 
@@ -87,6 +93,10 @@ function can(feature, role) {
       return t.modelArena;
     case 'evolution':
       return true; // 全部等级可看，但受 evolutionLimit 限制
+    case 'benchmarkGap':
+      return t.benchmarkGap; // 仅 enterprise 开放基准对标
+    case 'workers':
+      return true; // 岗位报告全员可见，roster 数量随等级
     default:
       return false;
   }
@@ -130,6 +140,17 @@ function applyTier(snap, role) {
     }
   }
   if (!t.modelArena) delete out.modelArena;
+  // 基准对标（benchmarkGap + workerReport.benchmark）仅 enterprise 可见
+  if (!t.regimeAware) {
+    delete out.benchmarkGap;
+    if (out.workerReport && out.workerReport.benchmark) {
+      out.workerReport = { ...out.workerReport, benchmark: undefined };
+    }
+  }
+  // workerReport 保留（全员可见），但 strategist 行在非 enterprise 置为 idle
+  if (!t.regimeAware && out.workerReport && Array.isArray(out.workerReport.rows)) {
+    out.workerReport = { ...out.workerReport, rows: out.workerReport.rows.map((r) => r.key === 'strategist' ? { ...r, produced: '— (enterprise only)', status: 'locked' } : r) };
+  }
   return out;
 }
 

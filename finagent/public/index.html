@@ -18,7 +18,8 @@
       <button class="nav-item" data-page="prediction">预测 & 命中</button>
       <button class="nav-item" data-page="model">模型竞技场</button>
       <button class="nav-item" data-page="evolution">自我升级日志</button>
-      <button class="nav-item" data-page="tier">会员等级</button>
+      <button class="nav-item" data-page="tier">会员等级</button><button class="nav-item" data-page="tier">会员等级</button>
+      <button class="nav-item" data-page="workers">数字员工</button>
       <button class="nav-item" data-page="ops">运维</button>
       <button class="nav-item" data-page="openapi">开放 API</button>
     </nav>
@@ -105,7 +106,17 @@
       </div>
     </section>
 
-    <section id="page-ops" class="page">
+    <section id="page-workers" class="page">
+      <div class="panel">
+        <h2>数字员工 · 精准分工</h2>
+        <div id="workersBody" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+      <div class="panel" id="benchPanel" hidden>
+        <h2>市场基准对标（策略师）</h2>
+        <div id="benchBody"></div>
+      </div>
+    </section>
+<section id="page-ops" class="page">
       <div class="panel">
         <h2>运维状态</h2>
         <div id="opsBody"></div>

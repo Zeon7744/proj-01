@@ -93,3 +93,7 @@
   color: var(--muted);
   font-size: 11px;
 }
+
+/* 数字员工 */
+.worker-row { display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:13px; }
+.worker-row .tag { min-width:70px; text-align:center; }

@@ -15,6 +15,11 @@
 // 该模块是纯函数，不写盘，保证可测试、可离线运行。
 
 const ROSTERS = {
+  // 键与 TIER.workerRoster 对齐（lite3 / pro5 / enterprise7）
+  lite3: ['collector', 'analyst', 'forecaster'],
+  pro5: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester'],
+  enterprise7: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'auditor', 'strategist'],
+  // 别名：按 tier 名（free/pro/enterprise）直接查
   free: ['collector', 'analyst', 'forecaster'],
   pro: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester'],
   enterprise: ['collector', 'analyst', 'modeler', 'forecaster', 'backtester', 'auditor', 'strategist'],

@@ -18,8 +18,8 @@
     "ops:backup": "node scripts/ops.js backup",
     "ops:prune": "node scripts/ops.js prune --keep-days 30",
     "ops:jobs": "node scripts/ops.js jobs --version full",
-    "test": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js test/tiers.test.js test/realdata.test.js",
-    "test:all": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js test/tiers.test.js test/realdata.test.js",
+    "test": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js test/tiers.test.js test/realdata.test.js test/workers-benchmark.test.js",
+    "test:all": "node --test test/engines.test.js test/shared.test.js test/middleware.test.js test/regime.test.js test/tiers.test.js test/realdata.test.js test/workers-benchmark.test.js",
     "tier:smoke": "node scripts/tier-smoke.js",
     "collect:realdata": "node scripts/collect-realdata.js"
   },
