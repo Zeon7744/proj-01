@@ -1,71 +1,78 @@
-# proj-01
+# 📊 Proj-01 — 任务管理系统 + FinAgent金融数据Agent
 
-集成项目包，包含两个子项目：
+> **金融数据分析平台** — 任务管理 · FinAgent · 量化策略  
+> 集成任务调度与金融数据获取的一体化解决方案
 
-## 1. 任务管理系统 (root)
+[![GitHub Stars](https://img.shields.io/github/stars/Zeon7744/proj-01?style=social)](https://github.com/Zeon7744/proj-01)
+[![GitHub Forks](https://img.shields.io/github/forks/Zeon7744/proj-01?style=social)](https://github.com/Zeon7744/proj-01/forks)
+[![GitHub License](https://img.shields.io/github/license/Zeon7744/proj-01)](https://github.com/Zeon7744/proj-01/blob/main/LICENSE)
+[![Gitee Stars](https://gitee.com/Zeon7744/proj-01/badge/star.svg?theme=gvp)](https://gitee.com/Zeon7744/proj-01)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-blue.svg)](https://nodejs.org/)
 
-简洁的 CRUD 任务管理应用，基于 Express + JSON 文件存储。
+---
 
-- 任务增删改查
-- 状态管理：待办 / 进行中 / 已完成
-- 优先级：低 / 中 / 高
-- 截止日期与逾期提示
-- 数据持久化到 `data/records.json`
+## 📌 这是 GitHub 官方主仓
 
-快速开始：
+> **Gitee 镜像**: [gitee.com/Zeon7744/proj-01](https://gitee.com/Zeon7744/proj-01)
 
-```bash
-npm install
-npm start
-```
+Issues 和 PR 请在 GitHub 提交。
 
-## 2. FinAgent - 全球金融数据 Agent
+---
 
-全栈金融数据 Agent，支持多源采集、自研算法、精准预测。
-
-### 双版本
-
-- **Lite**: 8 个标的，1 年数据，简单指标分析
-- **Full**: 20 个标的（股/指/币/汇/商品），10 年数据，自研 T4 高级算法，多周期预测+回测验证
-
-### 核心能力
-
-- 多源数据采集（yfinance / Alpha Vantage）
-- 自研高精度算法（T1 规则 → T2 多因子 → T3 自适应 → T4 进阶）
-- 多周期预测（5/20/60 天目标价 + 置信度）
-- Walk-forward 回测 + 命中检测
-- RBAC 权限隔离（viewer/analyst/admin）
-
-### 快速开始
+## ⚡ 快速开始
 
 ```bash
-cd finagent
+git clone https://github.com/Zeon7744/proj-01.git
+cd proj-01
 npm install
-npm start  # http://localhost:3001
+npm run dev
 ```
 
-### API 端点
+---
+
+## 🛠️ 核心功能
+
+| 模块 | 功能 |
+|------|------|
+| **任务管理** | 任务创建、分配、追踪、统计 |
+| **FinAgent** | 金融数据获取、分析、可视化 |
+| **量化策略** | 回测引擎、策略优化、绩效分析 |
+| **报表生成** | HTML/PDF 报告导出 |
+
+---
+
+## 📁 项目结构
 
 ```
-GET  /api/health
-GET  /api/tickers              # 读取行情列表
-GET  /api/tickers/:ticker/bars # K 线数据
-GET  /api/predictions          # 预测记录
-GET  /api/backtest/:ticker     # 回测报告
-POST /api/agent/run            # 运行 Agent（采集+分析+预测）
+proj-01/
+├── src/                # 源代码
+├── data/               # 数据目录
+├── finagent/           # FinAgent模块
+├── package.json        # 依赖配置
+└── README.md          # 项目文档
 ```
 
-### 预测样例 (AAPL)
+---
 
-```json
-{
-  "ticker": "AAPL",
-  "base": 335.81,
-  "model": "T4-advanced",
-  "predictions": [
-    { "days": 5,  "target": 335.96 },
-    { "days": 20, "target": 336.43 },
-    { "days": 60, "target": 337.12 }
-  ]
-}
-```
+## ⚠️ 注意事项
+
+- 本系统仅供研究学习使用
+- 不构成投资建议
+
+---
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+**开发者**: Zeon7744  
+**最后更新**: 2026-09-25  
+**GitHub**: https://github.com/Zeon7744/proj-01
